@@ -1,100 +1,99 @@
 import { useState } from "react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 
 const BillView = ({ bills }) => {
-	const [isExpanded, setIsExpanded] = useState(false);
+	const [isExpanded, setIsExpanded] = useState(true);
 
-	if (!bills || bills.length === 0) {
-		return (
-			<div className="text-center py-4 opacity-50 text-sm">
-				No active bills at this table
-			</div>
-		);
-	}
-
-	const statusColors = {
-		pending: "badge-secondary",
-		preparing: "badge-warning",
-		ready: "badge-success",
-		completed: "badge-ghost",
-		cancelled: "badge-error",
-		refunded: "badge-error",
-	};
-
-	const statusLabels = {
-		pending: "Received",
-		preparing: "Preparing",
-		ready: "Ready ✅",
-		completed: "Completed",
-		cancelled: "Cancelled",
-		refunded: "Refunded",
-	};
-
-	const unpaidCount = bills.filter((b) => b.payment_status === "unpaid").length;
+	const hasBills = bills && bills.length > 0;
 
 	return (
-		<div className="bg-base-200/50 rounded-lg p-4 m-4">
+		<div className="card bg-base-100 shadow-sm border border-base-300 mb-4">
 			<div
-				className="flex justify-between items-center cursor-pointer"
+				className="card-body p-4 cursor-pointer"
 				onClick={() => setIsExpanded(!isExpanded)}>
-				<h3 className="font-bold flex items-center gap-2">
-					📋 Bills at this table
-					{unpaidCount > 0 && (
-						<span className="badge badge-warning badge-sm">
-							{unpaidCount} unpaid
-						</span>
-					)}
-				</h3>
-				<button className="btn btn-xs btn-ghost">
-					{isExpanded ? "▲" : "▼"}
-				</button>
-			</div>
-
-			<div
-				className={`space-y-3 mt-3 ${
-					isExpanded ? "" : "max-h-32 overflow-y-auto"
-				}`}>
-				{bills.map((bill) => (
-					<div
-						key={bill.id}
-						className="bg-base-100 rounded-lg p-3 border border-base-200">
-						<div className="flex justify-between items-start">
-							<div>
-								<div className="flex items-center gap-2">
-									<span className="font-mono text-sm font-bold">
-										#{bill.order_number?.slice(-6) || "NEW"}
-									</span>
-									{bill.customer_name && (
-										<span className="text-xs opacity-60">
-											• {bill.customer_name}
-										</span>
-									)}
-								</div>
-								<div className="flex gap-1 mt-1">
-									<span
-										className={`badge badge-xs ${
-											statusColors[bill.pos_order_status] || "badge-ghost"
-										}`}>
-										{statusLabels[bill.pos_order_status] ||
-											bill.pos_order_status}
-									</span>
-									{bill.payment_status === "paid" && (
-										<span className="badge badge-xs badge-success">
-											Paid ✅
-										</span>
-									)}
-								</div>
-							</div>
-							<div className="text-right">
-								<div className="font-bold text-primary">
-									฿{bill.total_amount}
-								</div>
-								<div className="text-[10px] opacity-50">
-									{bill.order_items?.length || 0} items
-								</div>
-							</div>
-						</div>
+				<div className="flex items-center justify-between">
+					<div className="flex items-center gap-2">
+						<span className="text-lg">📋</span>
+						<h3 className="card-title text-sm">Bills at this table</h3>
+						{hasBills && (
+							<span className="badge badge-warning badge-sm">
+								{bills.filter((b) => b.payment_status === "unpaid").length}{" "}
+								unpaid
+							</span>
+						)}
 					</div>
-				))}
+					<button className="btn btn-xs btn-ghost">
+						{isExpanded ? (
+							<ChevronUp className="w-4 h-4" />
+						) : (
+							<ChevronDown className="w-4 h-4" />
+						)}
+					</button>
+				</div>
+
+				{isExpanded && (
+					<div className="mt-2">
+						{!hasBills ? (
+							<div className="text-center py-6">
+								<p className="text-sm text-base-content/40">
+									No active bills at this table
+								</p>
+							</div>
+						) : (
+							<div className="space-y-2">
+								{bills.map((bill) => (
+									<div key={bill.id} className="bg-base-200 rounded-lg p-3">
+										<div className="flex items-center justify-between">
+											<div>
+												<div className="font-mono text-sm font-bold">
+													#{bill.order_number?.slice(-6) || "NEW"}
+													{bill.order_source === "qr" && (
+														<span className="badge badge-accent badge-xs ml-1 font-bold">
+															QR
+														</span>
+													)}
+												</div>
+												{bill.customer_name && (
+													<div className="text-xs text-base-content/60">
+														{bill.customer_name}
+													</div>
+												)}
+											</div>
+											<div className="text-right">
+												<div className="font-bold text-primary">
+													฿{bill.total_amount}
+												</div>
+												<div className="flex gap-1 mt-0.5 justify-end">
+													<span
+														className={`badge badge-xs ${
+															bill.pos_order_status === "ready"
+																? "badge-success"
+																: bill.pos_order_status === "preparing"
+																? "badge-warning"
+																: bill.pos_order_status === "completed"
+																? "badge-ghost"
+																: bill.pos_order_status === "cancelled"
+																? "badge-error"
+																: bill.pos_order_status === "refunded"
+																? "badge-error"
+																: "badge-ghost"
+														}`}>
+														{bill.pos_order_status}
+													</span>
+													{bill.payment_status === "paid" && (
+														<span className="badge badge-xs badge-success">
+															Paid
+														</span>
+													)}
+												</div>
+											</div>
+										</div>
+									</div>
+								))}
+							</div>
+						)}
+					</div>
+				)}
 			</div>
 		</div>
 	);

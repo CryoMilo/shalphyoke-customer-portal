@@ -1,21 +1,49 @@
-import React from 'react';
-import { Minus, Plus, Trash2 } from 'lucide-react';
-import { useCartStore } from '../../stores/useCartStore';
+import { Minus, Plus, Trash2 } from "lucide-react";
+import { useCartStore } from "../../stores/useCartStore";
+
 const CartItem = ({ item }) => {
-  const { updateQuantity, removeFromCart } = useCartStore();
-  return (
-    <div className="flex justify-between items-start bg-base-200 rounded-lg p-3">
-      <div className="flex-1">
-        <h4 className="font-medium text-sm">{item.name_burmese}</h4>
-        <p className="text-xs opacity-60">฿{item.price} × {item.quantity}</p>
-      </div>
-      <div className="flex items-center gap-1">
-        <button className="btn btn-xs btn-ghost btn-circle" onClick={() => updateQuantity(item.cart_id, -1)}><Minus className="w-3 h-3" /></button>
-        <span className="font-mono text-sm w-6 text-center">{item.quantity}</span>
-        <button className="btn btn-xs btn-ghost btn-circle" onClick={() => updateQuantity(item.cart_id, 1)}><Plus className="w-3 h-3" /></button>
-        <button className="btn btn-xs btn-ghost btn-circle text-error" onClick={() => removeFromCart(item.cart_id)}><Trash2 className="w-3 h-3" /></button>
-      </div>
-    </div>
-  );
+	const { updateQuantity, removeFromCart } = useCartStore();
+
+	return (
+		<div className="bg-base-100 rounded-xl border border-base-200 p-3 transition-all hover:border-primary/20">
+			<div className="flex items-start gap-3">
+				<div className="flex-1 min-w-0">
+					<div className="font-medium text-sm text-secondary">
+						{item.name_burmese}
+					</div>
+					<div className="text-xs font-mono text-primary/80">
+						฿{item.price} × {item.quantity}
+					</div>
+					{item.notes && (
+						<div className="text-[10px] text-base-content/50 italic mt-0.5 line-clamp-1">
+							"{item.notes}"
+						</div>
+					)}
+				</div>
+
+				<div className="flex items-center gap-1">
+					<button
+						className="btn btn-xs btn-ghost btn-circle hover:bg-base-300/60"
+						onClick={() => updateQuantity(item.cart_id, -1)}>
+						<Minus className="w-3.5 h-3.5" />
+					</button>
+					<span className="font-mono text-sm font-medium w-6 text-center">
+						{item.quantity}
+					</span>
+					<button
+						className="btn btn-xs btn-ghost btn-circle hover:bg-base-300/60"
+						onClick={() => updateQuantity(item.cart_id, 1)}>
+						<Plus className="w-3.5 h-3.5" />
+					</button>
+					<button
+						className="btn btn-xs btn-ghost btn-circle text-error/60 hover:bg-error/10 hover:text-error"
+						onClick={() => removeFromCart(item.cart_id)}>
+						<Trash2 className="w-3.5 h-3.5" />
+					</button>
+				</div>
+			</div>
+		</div>
+	);
 };
+
 export default CartItem;

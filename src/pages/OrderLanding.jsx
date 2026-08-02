@@ -2,7 +2,6 @@ import { useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useSessionStore } from "../stores/useSessionStore";
 import { sessionAPI } from "../api/session";
-import LoadingSpinner from "../components/Shared/LoadingSpinner";
 
 const OrderLanding = () => {
 	const [searchParams] = useSearchParams();
@@ -22,9 +21,11 @@ const OrderLanding = () => {
 			try {
 				setLoading(true);
 				const result = await sessionAPI.validate(parseInt(table), token);
-				setSession(result.session); // ← This should work now
+				setSession(result.session);
+
 				const bills = await sessionAPI.getTableBills(parseInt(table));
 				setBills(bills);
+
 				navigate(`/order/${table}/${token}`);
 			} catch (error) {
 				console.error("Session error:", error);
@@ -37,7 +38,16 @@ const OrderLanding = () => {
 		init();
 	}, [searchParams, navigate, setSession, setBills, setLoading]);
 
-	return <LoadingSpinner />;
+	return (
+		<div className="min-h-screen flex items-center justify-center bg-base-200">
+			<div className="text-center">
+				<span className="loading loading-spinner loading-lg text-primary"></span>
+				<p className="mt-4 text-sm text-base-content/50">
+					Loading your table...
+				</p>
+			</div>
+		</div>
+	);
 };
 
 export default OrderLanding;

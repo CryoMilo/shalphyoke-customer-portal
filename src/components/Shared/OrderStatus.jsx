@@ -7,14 +7,13 @@ import {
 } from "lucide-react";
 
 const OrderStatus = ({ status }) => {
-	// Check if order is cancelled or refunded
 	if (status === "cancelled" || status === "refunded") {
 		return (
-			<div className="w-full max-w-md mx-auto p-4">
-				<div className="alert alert-error">
-					<XCircle className="w-6 h-6" />
-					<span>This order has been {status}</span>
-				</div>
+			<div className="bg-error/10 rounded-xl p-4 flex items-center gap-3 text-error">
+				<XCircle className="w-5 h-5 shrink-0" />
+				<span className="font-medium text-sm">
+					This order has been {status}
+				</span>
 			</div>
 		);
 	}
@@ -26,35 +25,71 @@ const OrderStatus = ({ status }) => {
 		{ key: "completed", label: "Completed", icon: CheckCircle },
 	];
 
-	const currentStep = steps.findIndex((s) => s.key === status);
+	const currentStepIndex = steps.findIndex((s) => s.key === status);
 	const isComplete = status === "completed";
 
 	return (
-		<div className="w-full max-w-md mx-auto p-4">
-			<div className="steps steps-vertical">
+		<div className="py-2">
+			<div className="relative">
 				{steps.map((step, index) => {
 					const Icon = step.icon;
-					const isActive = index <= currentStep;
-					const isCurrent = index === currentStep;
+					const isActive = index <= currentStepIndex;
+					const isCurrent = index === currentStepIndex;
 
 					return (
-						<div
-							key={step.key}
-							className={`step ${isActive ? "step-primary" : "step-neutral"}`}>
-							<div className="flex items-center gap-2">
-								<Icon
-									className={`w-4 h-4 ${
-										isActive ? "text-primary" : "opacity-50"
-									}`}
-								/>
-								<span className={isActive ? "font-medium" : "opacity-50"}>
-									{step.label}
-								</span>
-								{isCurrent && !isComplete && (
-									<span className="loading loading-spinner loading-xs ml-2" />
+						<div key={step.key} className="order-status-step">
+							<div className="order-status-step-connector">
+								{/* Vertical line */}
+								{index < steps.length - 1 && (
+									<div
+										className={`order-status-step-line ${
+											isActive ? "order-status-step-line-active" : ""
+										}`}
+									/>
 								)}
-								{isComplete && index === steps.length - 1 && (
-									<CheckCircle className="w-4 h-4 text-success ml-2" />
+
+								{/* Dot */}
+								<div
+									className={`order-status-step-dot ${
+										isComplete && index === steps.length - 1
+											? "order-status-step-dot-completed"
+											: isActive
+											? "order-status-step-dot-active"
+											: "order-status-step-dot-inactive"
+									}`}>
+									{isComplete && index === steps.length - 1 ? (
+										<CheckCircle className="w-3 h-3" />
+									) : isActive ? (
+										<span className="text-[8px]">✓</span>
+									) : (
+										<span className="text-[8px]">{index + 1}</span>
+									)}
+								</div>
+							</div>
+
+							<div className="order-status-step-content">
+								<div className="flex items-center gap-2">
+									<Icon
+										className={`w-4 h-4 ${
+											isActive ? "text-primary" : "text-base-content/30"
+										}`}
+									/>
+									<span
+										className={`order-status-step-label ${
+											!isActive ? "text-base-content/30" : ""
+										}`}>
+										{step.label}
+									</span>
+									{isCurrent && !isComplete && (
+										<span className="loading loading-spinner loading-xs text-primary" />
+									)}
+								</div>
+								{isActive && (
+									<div className="order-status-step-time">
+										{isComplete && index === steps.length - 1
+											? "Done"
+											: "In progress..."}
+									</div>
 								)}
 							</div>
 						</div>

@@ -1,8 +1,14 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { orderAPI } from "../api/orders";
-import OrderStatus from "../components/Shared/OrderStatus";
-import LoadingSpinner from "../components/Shared/LoadingSpinner";
+import {
+	ArrowLeft,
+	// CheckCircle,
+	// Clock,
+	// CookingPot,
+	// Utensils,
+	// XCircle,
+} from "lucide-react";
 import toast from "react-hot-toast";
 
 const QRStatus = () => {
@@ -30,7 +36,6 @@ const QRStatus = () => {
 			setOrder(updatedOrder);
 			setStatus(updatedOrder.pos_order_status);
 
-			// Toast notifications based on status
 			if (updatedOrder.pos_order_status === "ready") {
 				toast.success("🍽️ Your food is ready!");
 			}
@@ -51,69 +56,149 @@ const QRStatus = () => {
 	}, [orderId, navigate]);
 
 	if (!order) {
-		return <LoadingSpinner />;
+		return (
+			<div className="min-h-screen flex items-center justify-center bg-base-200">
+				<span className="loading loading-spinner loading-lg text-primary"></span>
+			</div>
+		);
 	}
 
+	// Order Status Timeline Component
+	// const OrderTimeline = ({ status }) => {
+	// 	if (status === "cancelled" || status === "refunded") {
+	// 		return (
+	// 			<div className="alert alert-error">
+	// 				<XCircle className="w-5 h-5" />
+	// 				<span>This order has been {status}</span>
+	// 			</div>
+	// 		);
+	// 	}
+
+	// 	const steps = [
+	// 		{ key: "pending", label: "Order Received", icon: Clock },
+	// 		{ key: "preparing", label: "Preparing", icon: CookingPot },
+	// 		{ key: "ready", label: "Ready to Serve", icon: Utensils },
+	// 		{ key: "completed", label: "Completed", icon: CheckCircle },
+	// 	];
+
+	// 	const currentStep = steps.findIndex((s) => s.key === status);
+	// 	const isComplete = status === "completed";
+
+	// 	return (
+	// 		<ul className="steps steps-vertical ml-4">
+	// 			{steps.map((step, index) => {
+	// 				const Icon = step.icon;
+	// 				const isActive = index <= currentStep;
+	// 				const isCurrent = index === currentStep;
+
+	// 				return (
+	// 					<li
+	// 						key={step.key}
+	// 						className={`step ${isActive ? "step-primary" : ""}`}>
+	// 						<div className="flex items-center gap-2">
+	// 							<Icon
+	// 								className={`w-4 h-4 ${
+	// 									isActive ? "text-primary" : "text-base-content/30"
+	// 								}`}
+	// 							/>
+	// 							<span
+	// 								className={isActive ? "font-medium" : "text-base-content/30"}>
+	// 								{step.label}
+	// 							</span>
+	// 							{isCurrent && !isComplete && (
+	// 								<span className="loading loading-spinner loading-xs text-primary" />
+	// 							)}
+	// 						</div>
+	// 					</li>
+	// 				);
+	// 			})}
+	// 		</ul>
+	// 	);
+	// };
+
 	return (
-		<div className="max-w-md mx-auto p-4 min-h-screen bg-base-100">
-			<div className="card bg-base-200 shadow-xl">
-				<div className="card-body">
-					<h2 className="card-title text-2xl">Order Status</h2>
+		<div className="min-h-screen bg-base-200">
+			<div className="max-w-md mx-auto p-4 pt-6">
+				<div className="card bg-base-100 shadow-lg border border-base-200">
+					<div className="card-body space-y-4">
+						{/* Header */}
+						<div className="flex items-center justify-between">
+							<div>
+								<h2 className="card-title text-xl">Order Status</h2>
+								<div className="font-mono text-sm text-base-content/50">
+									#{order.order_number?.slice(-8) || order.id.slice(0, 8)}
+								</div>
+							</div>
+							<span
+								className={`badge ${
+									status === "completed"
+										? "badge-success"
+										: status === "ready"
+										? "badge-success"
+										: status === "preparing"
+										? "badge-warning"
+										: status === "cancelled" || status === "refunded"
+										? "badge-error"
+										: "badge-ghost"
+								}`}>
+								{status}
+							</span>
+						</div>
 
-					<div className="text-sm opacity-60 mb-4">
-						Order #{order.order_number?.slice(-8) || order.id.slice(0, 8)}
-					</div>
+						{/* Timeline */}
+						{/* <OrderTimeline status={status} /> */}
 
-					<OrderStatus status={status} />
+						{/* Order Items */}
+						<div className="pt-2">
+							<h4 className="font-bold text-sm mb-2">Your Order</h4>
+							<div className="space-y-1">
+								{order.order_items?.map((item, idx) => (
+									<div
+										key={idx}
+										className="flex justify-between text-sm py-1 border-b border-base-200/60 last:border-0">
+										<span className="text-base-content/80">
+											{item.quantity}x {item.name_burmese}
+										</span>
+										<span className="font-mono">
+											฿{(item.final_price || item.price) * item.quantity}
+										</span>
+									</div>
+								))}
+							</div>
+							<div className="flex justify-between pt-2 mt-2 border-t border-base-300 font-bold">
+								<span>Total</span>
+								<span className="text-primary">฿{order.total_amount}</span>
+							</div>
+						</div>
 
-					{/* Order Items */}
-					<div className="mt-6">
-						<h3 className="font-bold mb-2">Your Order</h3>
-						<div className="space-y-1">
-							{order.order_items?.map((item, idx) => (
-								<div
-									key={idx}
-									className="flex justify-between text-sm py-1 border-b border-base-300/50">
+						{/* Payment Status */}
+						{order.payment_status === "unpaid" &&
+							order.pos_order_status === "ready" && (
+								<div className="alert alert-warning">
 									<span>
-										{item.quantity}x {item.name_burmese}
-									</span>
-									<span>
-										฿{(item.final_price || item.price) * item.quantity}
+										💳 Please pay at the counter when your food arrives
 									</span>
 								</div>
-							))}
-						</div>
-						<div className="mt-3 pt-2 border-t border-base-300 flex justify-between font-bold">
-							<span>Total</span>
-							<span className="text-primary">฿{order.total_amount}</span>
-						</div>
-					</div>
+							)}
 
-					{/* Payment Status */}
-					{order.payment_status === "unpaid" &&
-						order.pos_order_status === "ready" && (
-							<div className="alert alert-warning mt-4">
-								<span>💳 Please pay at the counter when your food arrives</span>
+						{order.payment_status === "paid" && (
+							<div className="alert alert-success">
+								<span>✅ Payment complete! Thank you for dining with us.</span>
 							</div>
 						)}
 
-					{order.payment_status === "paid" && (
-						<div className="alert alert-success mt-4">
-							<span>✅ Payment complete! Thank you for dining with us.</span>
-						</div>
-					)}
+						{(status === "cancelled" || status === "refunded") && (
+							<div className="alert alert-error">
+								<span>❌ This order has been {status}</span>
+							</div>
+						)}
 
-					{(status === "cancelled" || status === "refunded") && (
-						<div className="alert alert-error mt-4">
-							<span>❌ This order has been {status}</span>
-						</div>
-					)}
-
-					<div className="mt-4 flex gap-2">
+						{/* Back Button */}
 						<button
-							className="btn btn-ghost btn-sm flex-1"
+							className="btn btn-ghost btn-sm w-full gap-2 mt-2"
 							onClick={() => navigate(`/order/${order.table_number}`)}>
-							← Back to Menu
+							<ArrowLeft className="w-4 h-4" />
+							Back to Menu
 						</button>
 					</div>
 				</div>
