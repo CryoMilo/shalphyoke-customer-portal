@@ -1,6 +1,8 @@
 import { useState } from "react";
+
 const BillView = ({ bills }) => {
 	const [isExpanded, setIsExpanded] = useState(false);
+
 	if (!bills || bills.length === 0) {
 		return (
 			<div className="text-center py-4 opacity-50 text-sm">
@@ -8,19 +10,27 @@ const BillView = ({ bills }) => {
 			</div>
 		);
 	}
+
 	const statusColors = {
 		pending: "badge-secondary",
 		preparing: "badge-warning",
 		ready: "badge-success",
-		delivered: "badge-accent",
+		completed: "badge-ghost",
+		cancelled: "badge-error",
+		refunded: "badge-error",
 	};
+
 	const statusLabels = {
 		pending: "Received",
 		preparing: "Preparing",
-		ready: "Ready",
-		delivered: "Delivered ✅",
+		ready: "Ready ✅",
+		completed: "Completed",
+		cancelled: "Cancelled",
+		refunded: "Refunded",
 	};
+
 	const unpaidCount = bills.filter((b) => b.payment_status === "unpaid").length;
+
 	return (
 		<div className="bg-base-200/50 rounded-lg p-4 m-4">
 			<div
@@ -38,6 +48,7 @@ const BillView = ({ bills }) => {
 					{isExpanded ? "▲" : "▼"}
 				</button>
 			</div>
+
 			<div
 				className={`space-y-3 mt-3 ${
 					isExpanded ? "" : "max-h-32 overflow-y-auto"
@@ -88,4 +99,5 @@ const BillView = ({ bills }) => {
 		</div>
 	);
 };
+
 export default BillView;

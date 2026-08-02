@@ -12,39 +12,66 @@ import Header from "../components/Layout/Header";
 import Footer from "../components/Layout/Footer";
 import LoadingSpinner from "../components/Shared/LoadingSpinner";
 import toast from "react-hot-toast";
+
 const QROrder = () => {
-	const { table, token } = useParams();
+	const { table, token } = useParams(); // ← Get token from URL
 	const navigate = useNavigate();
+
 	const { session, bills, setBills } = useSessionStore();
 	const { menuItems, fetchMenu, isLoading: menuLoading } = useMenuStore();
 	const { cart, total, clearCart } = useCartStore();
+
 	const [isCartOpen, setIsCartOpen] = useState(false);
 	const [isLoading, setIsLoading] = useState(true);
+
 	useEffect(() => {
 		const init = async () => {
 			try {
 				setIsLoading(true);
-				if (!session) {
-					await sessionAPI.validate(parseInt(table), token);
+
+				// ✅ If session is not in store, validate using URL params
+				let currentSession = session;
+				if (!currentSession) {
+					const result = await sessionAPI.validate(parseInt(table), token);
+					currentSession = result.session;
+					// You might want to store it here too if needed
 				}
+
+				// Get bills for this table
 				const bills = await sessionAPI.getTableBills(parseInt(table));
 				setBills(bills);
+
+				// Load menu
 				await fetchMenu();
 			} catch (error) {
 				console.error("Init error:", error);
 				toast.error("Failed to load menu");
+				navigate("/order/invalid");
 			} finally {
 				setIsLoading(false);
 			}
 		};
+
 		init();
-	}, [table, token]);
+	}, [table, token, session, setBills, fetchMenu, navigate]);
+
 	const handlePlaceOrder = async (customerInfo) => {
 		if (cart.length === 0) {
 			toast.error("Your cart is empty");
 			return;
 		}
+
 		try {
+			// ✅ Use the token from URL params
+			// This is more reliable than relying on the store
+			const sessionToken = token;
+
+			if (!sessionToken) {
+				toast.error("Invalid session. Please try again.");
+				navigate("/order/invalid");
+				return;
+			}
+
 			const orderData = {
 				tableNumber: parseInt(table),
 				customerName: customerInfo?.name || null,
@@ -57,27 +84,37 @@ const QROrder = () => {
 				selectedExtras: [],
 				itemExtraPrices: {},
 			};
-			const order = await orderAPI.create(orderData, session.session_token);
+
+			// ✅ Pass the token from URL directly
+			const order = await orderAPI.create(orderData, sessionToken);
+
 			toast.success("Order placed successfully! 🎉");
 			clearCart();
+
 			navigate(`/order/status/${order.id}`);
 		} catch (error) {
 			console.error("Order error:", error);
 			toast.error("Failed to place order. Please try again.");
 		}
 	};
+
 	if (isLoading || menuLoading) {
 		return <LoadingSpinner />;
 	}
+
+	// Get unique categories
 	const categories = [
 		"All",
 		...new Set(menuItems.map((item) => item.category)),
 	];
+
 	return (
 		<div className="qr-order-page min-h-screen bg-base-100">
 			<Header tableNumber={table} billCount={bills?.length || 0} />
+
 			<main className="pb-32">
 				<BillView bills={bills} />
+
 				<div className="px-4">
 					<MenuGrid
 						items={menuItems}
@@ -86,6 +123,8 @@ const QROrder = () => {
 					/>
 				</div>
 			</main>
+
+			{/* Floating Cart Button */}
 			<div className="fixed bottom-4 left-4 right-4">
 				<button
 					className="btn btn-primary w-full shadow-lg flex justify-between items-center"
@@ -97,6 +136,7 @@ const QROrder = () => {
 					</span>
 				</button>
 			</div>
+
 			<CartDrawer
 				isOpen={isCartOpen}
 				onClose={() => setIsCartOpen(false)}
@@ -104,8 +144,10 @@ const QROrder = () => {
 				cart={cart}
 				total={total}
 			/>
+
 			<Footer />
 		</div>
 	);
 };
+
 export default QROrder;
