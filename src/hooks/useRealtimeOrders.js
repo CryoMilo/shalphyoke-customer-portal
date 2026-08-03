@@ -1,9 +1,9 @@
 import { useEffect } from 'react';
-import { useSessionStore } from '../stores/useSessionStore';
+import { useBillsStore } from '../stores/useBillsStore';
 import { sessionAPI } from '../api/session';
 import { supabase } from '../api/supabase';
 export const useRealtimeOrders = (tableNumber) => {
-  const { setBills } = useSessionStore();
+  const { setBills } = useBillsStore();
   useEffect(() => {
     if (!tableNumber) return;
     const channel = supabase

@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useSessionStore } from "../stores/useSessionStore";
 import { useMenuStore } from "../stores/useMenuStore";
 import { useCartStore } from "../stores/useCartStore";
+import { useBillsStore } from "../stores/useBillsStore";
 import { useCart } from "../context/CartContext";
 import { orderAPI } from "../api/orders";
 import { sessionAPI } from "../api/session";
@@ -13,11 +13,11 @@ import { ShoppingBag } from "lucide-react";
 import toast from "react-hot-toast";
 
 const QROrder = () => {
-	const { table, token } = useParams();
+	const { table } = useParams();
 	const navigate = useNavigate();
 	const { isCartOpen, closeCart, openCart } = useCart();
 
-	const { bills, setBills } = useSessionStore();
+	const { bills, setBills } = useBillsStore();
 	const { menuItems, fetchMenu, isLoading: menuLoading } = useMenuStore();
 	const { cart, total, clearCart } = useCartStore();
 
@@ -33,12 +33,9 @@ const QROrder = () => {
 			try {
 				setIsLoading(true);
 
-				// Validate session
-				await sessionAPI.validate(parseInt(table), token);
-
 				// Get bills
-				const bills = await sessionAPI.getTableBills(parseInt(table));
-				setBills(bills);
+				const tableBills = await sessionAPI.getTableBills(parseInt(table));
+				setBills(tableBills);
 
 				// Load menu
 				await fetchMenu();
@@ -51,8 +48,10 @@ const QROrder = () => {
 			}
 		};
 
-		init();
-	}, [table, token]);
+		if (table) {
+			init();
+		}
+	}, [table, navigate, fetchMenu]);
 
 	const handlePlaceOrder = async (customerInfo) => {
 		if (cart.length === 0) {
@@ -74,7 +73,7 @@ const QROrder = () => {
 				itemExtraPrices: {},
 			};
 
-			const order = await orderAPI.create(orderData, token);
+			const order = await orderAPI.create(orderData);
 
 			toast.success("Order placed successfully! 🎉");
 			clearCart();

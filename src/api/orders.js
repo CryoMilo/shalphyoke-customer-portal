@@ -1,6 +1,6 @@
 import { supabase } from './supabase';
 export const orderAPI = {
-  create: async (orderData, sessionToken) => {
+  create: async (orderData) => {
     const orderNumber = `QR-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
     const { data, error } = await supabase
       .from('orders')
@@ -9,7 +9,6 @@ export const orderAPI = {
         order_type: 'dine_in',
         order_source: 'qr',
         table_number: orderData.tableNumber,
-        session_token: sessionToken,
         customer_name: orderData.customerName || null,
         customer_phone: orderData.customerPhone || null,
         order_items: orderData.items,

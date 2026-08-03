@@ -7,6 +7,7 @@ import QROrder from "./pages/QROrder";
 import QRStatus from "./pages/QRStatus";
 import QRComplete from "./pages/QRComplete";
 import InvalidQR from "./components/Shared/InvalidQR";
+import LocationRequest from "./pages/LocationRequest";
 
 function App() {
 	return (
@@ -39,7 +40,9 @@ function App() {
 				<Routes>
 					<Route path="/" element={<Navigate to="/order" />} />
 					<Route path="/order" element={<OrderLanding />} />
-					<Route path="/order/:table/:token" element={<QRLayout />}>
+					<Route path="/order/:table" element={<OrderLanding />} />
+					<Route path="/order/:table/location" element={<LocationRequest />} />
+					<Route path="/order/:table/menu" element={<QRLayout />}>
 						<Route index element={<QROrder />} />
 					</Route>
 					<Route path="/order/status/:orderId" element={<QRStatus />} />

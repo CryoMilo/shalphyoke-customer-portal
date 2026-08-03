@@ -1,10 +1,10 @@
-import { useSessionStore } from "../../stores/useSessionStore";
+import { useBillsStore } from "../../stores/useBillsStore";
 import { useCartStore } from "../../stores/useCartStore";
 import { ShoppingBag, Users } from "lucide-react";
 import logo from "../../../src/assets/logo.png";
 
 const QRHeader = ({ onCartClick }) => {
-	const { bills } = useSessionStore();
+	const { bills } = useBillsStore();
 	const { cart } = useCartStore();
 
 	const tableNumber = localStorage.getItem("tableNumber") || "--";

@@ -1,4 +1,4 @@
-import { Minus, Plus, Trash2 } from "lucide-react";
+import { Minus, Plus, Trash2, ImageIcon } from "lucide-react";
 import { useCartStore } from "../../stores/useCartStore";
 
 const CartItem = ({ item }) => {
@@ -7,6 +7,20 @@ const CartItem = ({ item }) => {
 	return (
 		<div className="bg-base-100 rounded-xl border border-base-200 p-3 transition-all hover:border-primary/20">
 			<div className="flex items-start gap-3">
+				{item.image_url ? (
+					<div className="w-12 h-12 rounded-lg overflow-hidden shrink-0">
+						<img 
+							src={item.image_url} 
+							alt={item.name_burmese || "Item"} 
+							className="w-full h-full object-cover object-center"
+						/>
+					</div>
+				) : (
+					<div className="w-12 h-12 rounded-lg bg-base-200 flex items-center justify-center shrink-0">
+						<ImageIcon className="w-5 h-5 text-base-content/20" />
+					</div>
+				)}
+				
 				<div className="flex-1 min-w-0">
 					<div className="font-medium text-sm text-secondary">
 						{item.name_burmese}
