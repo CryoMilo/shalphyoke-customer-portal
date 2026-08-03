@@ -16,7 +16,11 @@ const OrderLanding = () => {
 			return;
 		}
 
-		checkProximity();
+		if (isWithinRadius === true) {
+			navigate(`/order/${table}/menu`);
+		} else {
+			checkProximity();
+		}
 	}, [table]);
 
 	useEffect(() => {
@@ -25,8 +29,6 @@ const OrderLanding = () => {
 		} else if (isWithinRadius === false) {
 			navigate("/order/invalid");
 		} else if (!isLoading && isWithinRadius === null) {
-			// This means error or not triggered yet (could be permission denied or needing manual trigger)
-			// But since we just triggered it, if it failed, it goes here
 			navigate(`/order/${table}/location`);
 		}
 	}, [isWithinRadius, isLoading, navigate, table]);

@@ -19,54 +19,82 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
 };
 
 export const useProximity = () => {
-  const [isWithinRadius, setIsWithinRadius] = useState(null);
+  const [isWithinRadius, setIsWithinRadius] = useState(() => {
+    const cached = sessionStorage.getItem('isWithinRadius');
+    return cached !== null ? cached === 'true' : null;
+  });
   const [distance, setDistance] = useState(null);
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const checkProximity = () => {
-    setIsLoading(true);
-    setError(null);
-    setIsWithinRadius(null);
-    setDistance(null);
+  const checkProximity = (forceFresh = false) => {
+    return new Promise((resolve) => {
+      setIsLoading(true);
+      setError(null);
 
-    if (!navigator.geolocation) {
-      setError('Geolocation is not supported by your browser.');
-      setIsLoading(false);
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const userLat = position.coords.latitude;
-        const userLng = position.coords.longitude;
-        
-        const restaurantLat = parseFloat(import.meta.env.VITE_RESTAURANT_LAT);
-        const restaurantLng = parseFloat(import.meta.env.VITE_RESTAURANT_LNG);
-        const maxRadius = parseFloat(import.meta.env.VITE_PROXIMITY_RADIUS) || 100;
-
-        if (isNaN(restaurantLat) || isNaN(restaurantLng)) {
-          setError('Restaurant location not configured properly.');
-          setIsLoading(false);
-          return;
-        }
-
-        const dist = calculateDistance(userLat, userLng, restaurantLat, restaurantLng);
-        setDistance(dist);
-        setIsWithinRadius(dist <= maxRadius);
+      // Return cached true result if not forced fresh
+      if (!forceFresh && sessionStorage.getItem('isWithinRadius') === 'true') {
+        setIsWithinRadius(true);
         setIsLoading(false);
-      },
-      (err) => {
-        setError(err.message || 'Failed to get location. Please enable location services.');
-        setIsLoading(false);
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0
+        resolve({ isWithinRadius: true, distance: 0, error: null });
+        return;
       }
-    );
+
+      if (!navigator.geolocation) {
+        const errMsg = 'Geolocation is not supported by your browser.';
+        setError(errMsg);
+        setIsWithinRadius(false);
+        sessionStorage.setItem('isWithinRadius', 'false');
+        setIsLoading(false);
+        resolve({ isWithinRadius: false, distance: null, error: errMsg });
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const userLat = position.coords.latitude;
+          const userLng = position.coords.longitude;
+          
+          const restaurantLat = parseFloat(import.meta.env.VITE_RESTAURANT_LAT);
+          const restaurantLng = parseFloat(import.meta.env.VITE_RESTAURANT_LNG);
+          const maxRadius = parseFloat(import.meta.env.VITE_PROXIMITY_RADIUS) || 100;
+
+          if (isNaN(restaurantLat) || isNaN(restaurantLng)) {
+            const errMsg = 'Restaurant location not configured properly.';
+            setError(errMsg);
+            setIsWithinRadius(false);
+            sessionStorage.setItem('isWithinRadius', 'false');
+            setIsLoading(false);
+            resolve({ isWithinRadius: false, distance: null, error: errMsg });
+            return;
+          }
+
+          const dist = calculateDistance(userLat, userLng, restaurantLat, restaurantLng);
+          const within = dist <= maxRadius;
+
+          setDistance(dist);
+          setIsWithinRadius(within);
+          sessionStorage.setItem('isWithinRadius', within ? 'true' : 'false');
+          setIsLoading(false);
+          resolve({ isWithinRadius: within, distance: dist, error: null });
+        },
+        (err) => {
+          const errMsg = err.message || 'Failed to get location. Please enable location services.';
+          setError(errMsg);
+          setIsWithinRadius(false);
+          sessionStorage.setItem('isWithinRadius', 'false');
+          setIsLoading(false);
+          resolve({ isWithinRadius: false, distance: null, error: errMsg });
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0
+        }
+      );
+    });
   };
 
   return { isWithinRadius, distance, error, isLoading, checkProximity };
 };
+

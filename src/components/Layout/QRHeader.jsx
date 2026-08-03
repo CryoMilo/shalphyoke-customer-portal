@@ -1,5 +1,6 @@
 import { useBillsStore } from "../../stores/useBillsStore";
 import { useCartStore } from "../../stores/useCartStore";
+import { getCartItemCount } from "../../utils/cartUtils";
 import { ShoppingBag, Users } from "lucide-react";
 import logo from "../../../src/assets/logo.png";
 
@@ -8,7 +9,7 @@ const QRHeader = ({ onCartClick }) => {
 	const { cart } = useCartStore();
 
 	const tableNumber = localStorage.getItem("tableNumber") || "--";
-	const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+	const cartCount = getCartItemCount(cart);
 
 	return (
 		<header className="sticky top-0 z-40 bg-base-100/80 backdrop-blur-lg border-b border-base-300 shadow-sm">

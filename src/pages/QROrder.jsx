@@ -12,14 +12,22 @@ import CartDrawer from "../components/Cart/CartDrawer";
 import { ShoppingBag } from "lucide-react";
 import toast from "react-hot-toast";
 
+import { getCartTotal, getCartItemCount } from "../utils/cartUtils";
+
+import { useProximity } from "../hooks/useProximity";
+
 const QROrder = () => {
 	const { table } = useParams();
 	const navigate = useNavigate();
 	const { isCartOpen, closeCart, openCart } = useCart();
+	const { checkProximity } = useProximity();
 
 	const { bills, setBills } = useBillsStore();
 	const { menuItems, fetchMenu, isLoading: menuLoading } = useMenuStore();
-	const { cart, total, clearCart } = useCartStore();
+	const { cart, clearCart } = useCartStore();
+	
+	const total = getCartTotal(cart);
+	const cartCount = getCartItemCount(cart);
 
 	const [isLoading, setIsLoading] = useState(true);
 
@@ -56,6 +64,16 @@ const QROrder = () => {
 	const handlePlaceOrder = async (customerInfo) => {
 		if (cart.length === 0) {
 			toast.error("Your cart is empty");
+			return;
+		}
+
+		// Re-verify location fresh when attempting to place order
+		const toastId = toast.loading("Verifying your location...");
+		const { isWithinRadius: freshWithin, error: proxError } = await checkProximity(true);
+		toast.dismiss(toastId);
+
+		if (!freshWithin) {
+			toast.error(proxError || "You must be at the restaurant to place an order.");
 			return;
 		}
 
@@ -118,7 +136,7 @@ const QROrder = () => {
 							View Cart
 						</span>
 						<span className="badge badge-primary text-white border-none font-bold">
-							{cart.length} items • ฿{total.toFixed(2)}
+							{cartCount} items • ฿{total.toFixed(2)}
 						</span>
 					</button>
 				</div>
