@@ -93,6 +93,8 @@ const QROrder = () => {
 
 			const order = await orderAPI.create(orderData);
 
+			localStorage.setItem("last_order_timestamp", Date.now().toString());
+
 			toast.success("Order placed successfully! 🎉");
 			clearCart();
 

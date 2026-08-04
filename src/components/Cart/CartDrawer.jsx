@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X, ShoppingBag } from "lucide-react";
 import CartItem from "./CartItem";
 
@@ -7,9 +7,31 @@ const CartDrawer = ({ isOpen, onClose, onPlaceOrder, cart, total }) => {
 	const [customerPhone, setCustomerPhone] = useState("");
 	const [notes, setNotes] = useState("");
 	const [isSubmitting, setIsSubmitting] = useState(false);
+	const [cooldown, setCooldown] = useState(0);
+
+	useEffect(() => {
+		const checkCooldown = () => {
+			const lastOrderTime = parseInt(
+				localStorage.getItem("last_order_timestamp") || "0",
+				10
+			);
+			const elapsed = Date.now() - lastOrderTime;
+			const remaining = Math.ceil((10000 - elapsed) / 1000);
+
+			if (remaining > 0) {
+				setCooldown(remaining);
+			} else {
+				setCooldown(0);
+			}
+		};
+
+		checkCooldown();
+		const interval = setInterval(checkCooldown, 1000);
+		return () => clearInterval(interval);
+	}, []);
 
 	const handleSubmit = async () => {
-		if (cart.length === 0) return;
+		if (cart.length === 0 || cooldown > 0) return;
 
 		setIsSubmitting(true);
 		try {
@@ -108,13 +130,15 @@ const CartDrawer = ({ isOpen, onClose, onPlaceOrder, cart, total }) => {
 
 						<button
 							className="btn btn-primary w-full"
-							disabled={isSubmitting}
+							disabled={isSubmitting || cooldown > 0}
 							onClick={handleSubmit}>
 							{isSubmitting ? (
 								<>
 									<span className="loading loading-spinner loading-xs"></span>
 									Placing Order...
 								</>
+							) : cooldown > 0 ? (
+								`Please wait (${cooldown}s)`
 							) : (
 								`Place Order • ฿${total.toFixed(2)}`
 							)}
