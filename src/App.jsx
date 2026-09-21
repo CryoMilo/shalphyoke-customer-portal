@@ -2,12 +2,8 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import { CartProvider } from "./context/CartContext";
 import QRLayout from "./components/Layout/QRLayout";
-import OrderLanding from "./pages/OrderLanding";
 import QROrder from "./pages/QROrder";
 import QRStatus from "./pages/QRStatus";
-import QRComplete from "./pages/QRComplete";
-import InvalidQR from "./components/Shared/InvalidQR";
-import LocationRequest from "./pages/LocationRequest";
 
 function App() {
 	return (
@@ -16,38 +12,45 @@ function App() {
 				<Toaster
 					position="bottom-center"
 					toastOptions={{
-						duration: 3000,
+						duration: 3500,
 						style: {
-							maxWidth: "400px",
-							borderRadius: "12px",
-							padding: "16px",
-							fontWeight: "500",
+							maxWidth: "420px",
+							borderRadius: "14px",
+							padding: "14px 18px",
+							fontWeight: "600",
+							fontSize: "14px",
 						},
 						success: {
 							style: {
-								background: "#22c55e",
+								background: "#16a34a",
 								color: "white",
 							},
 						},
 						error: {
 							style: {
-								background: "#ef4444",
+								background: "#dc2626",
 								color: "white",
 							},
 						},
 					}}
 				/>
 				<Routes>
-					<Route path="/" element={<Navigate to="/order" />} />
-					<Route path="/order" element={<OrderLanding />} />
-					<Route path="/order/:table" element={<OrderLanding />} />
-					<Route path="/order/:table/location" element={<LocationRequest />} />
-					<Route path="/order/:table/menu" element={<QRLayout />}>
+					{/* Main Customer Web Delivery Portal */}
+					<Route path="/" element={<QRLayout />}>
 						<Route index element={<QROrder />} />
 					</Route>
+
+					{/* Live Order & Delivery Tracking */}
 					<Route path="/order/status/:orderId" element={<QRStatus />} />
-					<Route path="/order/complete/:tableNumber" element={<QRComplete />} />
-					<Route path="/order/invalid" element={<InvalidQR />} />
+
+					{/* Graceful Fallbacks for any legacy QR links */}
+					<Route path="/order" element={<Navigate to="/" replace />} />
+					<Route path="/order/:table" element={<Navigate to="/" replace />} />
+					<Route path="/order/:table/*" element={<Navigate to="/" replace />} />
+					<Route path="/menu" element={<Navigate to="/" replace />} />
+
+					{/* Catch-all */}
+					<Route path="*" element={<Navigate to="/" replace />} />
 				</Routes>
 			</CartProvider>
 		</BrowserRouter>
