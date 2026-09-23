@@ -1,5 +1,6 @@
-import { Plus, ImageIcon } from "lucide-react";
+import { Plus, ImageIcon, Moon, Sun } from "lucide-react";
 import { useLanguageStore, getItemName } from "../../stores/useLanguageStore";
+import { getItemTimeAvailability } from "../../utils/menuAvailability";
 
 const MenuItemCard = ({ item, onAdd }) => {
 	const { currentLang } = useLanguageStore();
@@ -7,6 +8,10 @@ const MenuItemCard = ({ item, onAdd }) => {
 	if (!item) return null;
 
 	const isInactive = !item.is_active;
+	const timeAvailability = getItemTimeAvailability(item);
+	const isTimeDisabled = !timeAvailability.isAvailable;
+	const isDisabled = isInactive || isTimeDisabled;
+
 	const primaryName = getItemName(item, currentLang);
 	// Secondary subtitle if available and different
 	const secondaryName =
@@ -17,15 +22,48 @@ const MenuItemCard = ({ item, onAdd }) => {
 
 	return (
 		<div
-			className={`card bg-base-100 shadow-sm hover:shadow-md transition-all h-full border border-base-200/60 ${
-				isInactive ? "opacity-50" : ""
+			className={`card bg-base-100 shadow-sm hover:shadow-md transition-all h-full border border-base-200/60 relative overflow-hidden ${
+				isDisabled ? "opacity-65 bg-base-100/60" : ""
 			}`}>
+			{/* Time Tag Badges / Inactive Status Overlay */}
+			{isInactive ? (
+				<div className="absolute top-2 left-2 z-10">
+					<span className="badge badge-sm bg-black/75 backdrop-blur-md text-white border-none font-extrabold text-[10px] shadow-sm">
+						Out of stock
+					</span>
+				</div>
+			) : isTimeDisabled ? (
+				<div className="absolute top-2 left-2 z-10">
+					<span className="badge badge-sm bg-black/80 backdrop-blur-md text-amber-300 border border-amber-500/30 font-extrabold text-[10px] shadow-sm flex items-center gap-1">
+						{timeAvailability.tagType === "night_only" ? (
+							<Moon className="w-3 h-3 text-amber-300" />
+						) : (
+							<Sun className="w-3 h-3 text-amber-300" />
+						)}
+						<span>{timeAvailability.badgeText}</span>
+					</span>
+				</div>
+			) : timeAvailability.tagType && timeAvailability.tagType !== "all_day" ? (
+				<div className="absolute top-2 left-2 z-10">
+					<span className="badge badge-sm bg-black/60 backdrop-blur-md text-white border-none font-bold text-[10px] shadow-xs flex items-center gap-1">
+						{timeAvailability.tagType === "night_only" ? (
+							<Moon className="w-2.5 h-2.5 text-sky-300" />
+						) : (
+							<Sun className="w-2.5 h-2.5 text-amber-300" />
+						)}
+						<span>{timeAvailability.badgeText}</span>
+					</span>
+				</div>
+			) : null}
+
 			{item.image_url ? (
-				<figure className="aspect-[4/3] w-full overflow-hidden bg-base-200/30">
+				<figure className="aspect-[4/3] w-full overflow-hidden bg-base-200/30 relative">
 					<img
 						src={item.image_url}
 						alt={primaryName}
-						className="w-full h-full object-cover object-center hover:scale-105 transition-transform duration-300"
+						className={`w-full h-full object-cover object-center transition-transform duration-300 ${
+							isDisabled ? "grayscale-[25%]" : "hover:scale-105"
+						}`}
 						loading="lazy"
 					/>
 				</figure>
@@ -56,9 +94,19 @@ const MenuItemCard = ({ item, onAdd }) => {
 						฿{displayPrice}
 					</span>
 
-					{!isInactive && (
+					{isDisabled ? (
+						<span
+							className="text-[10px] font-extrabold text-base-content/50 bg-base-200 px-2.5 py-1 rounded-xl"
+							title={isInactive ? "Out of stock" : timeAvailability.reason}>
+							{isInactive
+								? "Sold out"
+								: timeAvailability.tagType === "night_only"
+								? "After 6 PM"
+								: "Before 6 PM"}
+						</span>
+					) : (
 						<button
-							className="btn btn-primary btn-sm btn-circle shrink-0 shadow-sm hover:scale-105"
+							className="btn btn-primary btn-sm btn-circle shrink-0 shadow-sm hover:scale-105 active:scale-95 transition-all"
 							onClick={onAdd}
 							title="Add to Cart">
 							<Plus className="w-4 h-4 text-primary-content" />

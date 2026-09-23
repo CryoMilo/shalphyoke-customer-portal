@@ -1,6 +1,8 @@
 import { X, ShoppingBag, ArrowRight } from "lucide-react";
 import CartItem from "./CartItem";
 import { useOrderFlowStore } from "../../stores/useOrderFlowStore";
+import { getItemTimeAvailability } from "../../utils/menuAvailability";
+import toast from "react-hot-toast";
 
 const CartDrawer = ({ isOpen, onClose, cart, total }) => {
 	const { selectedLocation, setStep } = useOrderFlowStore();
@@ -9,6 +11,16 @@ const CartDrawer = ({ isOpen, onClose, cart, total }) => {
 	const grandTotal = total + deliveryFee;
 
 	const handleProceedToCheckout = () => {
+		const unavailableItem = cart.find(
+			(item) => !getItemTimeAvailability(item).isAvailable
+		);
+		if (unavailableItem) {
+			const timeAvail = getItemTimeAvailability(unavailableItem);
+			toast.error(
+				`"${unavailableItem.name_english || "Item"}" is ${timeAvail.reason.toLowerCase()}. Please remove it to proceed.`
+			);
+			return;
+		}
 		onClose();
 		setStep("checkout");
 	};

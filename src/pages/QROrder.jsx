@@ -12,12 +12,13 @@ import OrderStepper from "../components/Shared/OrderStepper";
 import { ShoppingBag, ArrowRight } from "lucide-react";
 import toast from "react-hot-toast";
 import { getCartTotal, getCartItemCount } from "../utils/cartUtils";
+import { getItemTimeAvailability } from "../utils/menuAvailability";
 
 const QROrder = () => {
 	const { isCartOpen, closeCart } = useCart();
 	const { step, setStep, selectedLocation } = useOrderFlowStore();
 
-	const { menuItems, fetchMenu, isLoading: menuLoading } = useMenuStore();
+	const { menuItems, specials, fetchMenu, isLoading: menuLoading } = useMenuStore();
 	const { cart } = useCartStore();
 
 	const total = getCartTotal(cart);
@@ -69,12 +70,6 @@ const QROrder = () => {
 		return <WaitingForApproval />;
 	}
 
-	// Step 2: Menu Browsing
-	const categories = [
-		"All",
-		...new Set(menuItems.map((item) => item?.category).filter(Boolean)),
-	];
-
 	return (
 		<>
 			{/* Stepped Horizontal Progress Line */}
@@ -82,15 +77,27 @@ const QROrder = () => {
 				<OrderStepper currentStep={2} />
 			</div>
 
-			{/* Menu Categories & Items Grid */}
-			<MenuGrid items={menuItems} categories={categories} />
+			{/* Self-Order Kiosk Category Grid & Items */}
+			<MenuGrid items={menuItems} specials={specials} />
 
 			{/* Floating Bottom Cart Bar */}
 			{cart.length > 0 && (
 				<div className="fixed bottom-4 left-4 right-4 z-40 max-w-md mx-auto animate-slideUp">
 					<button
 						className="btn btn-primary w-full shadow-2xl hover:shadow-primary/30 transition-all text-primary-content font-bold flex justify-between items-center py-3.5 px-5 h-auto rounded-2xl"
-						onClick={() => setStep("checkout")}>
+						onClick={() => {
+							const unavailableItem = cart.find(
+								(item) => !getItemTimeAvailability(item).isAvailable
+							);
+							if (unavailableItem) {
+								const timeAvail = getItemTimeAvailability(unavailableItem);
+								toast.error(
+									`"${unavailableItem.name_english || "Item"}" is ${timeAvail.reason.toLowerCase()}. Please remove it from cart.`
+								);
+								return;
+							}
+							setStep("checkout");
+						}}>
 						<span className="flex items-center gap-2 text-sm font-extrabold">
 							<ShoppingBag className="w-5 h-5" />
 							<span>Review &amp; Checkout</span>
