@@ -1,11 +1,16 @@
+import { useState } from "react";
 import { X, ShoppingBag, ArrowRight } from "lucide-react";
 import CartItem from "./CartItem";
+import ItemCustomizationModal from "../Menu/ItemCustomizationModal";
 import { useOrderFlowStore } from "../../stores/useOrderFlowStore";
+import { useCartStore } from "../../stores/useCartStore";
 import { getItemTimeAvailability } from "../../utils/menuAvailability";
 import toast from "react-hot-toast";
 
 const CartDrawer = ({ isOpen, onClose, cart, total }) => {
 	const { selectedLocation, setStep } = useOrderFlowStore();
+	const { updateItemNote, updateQuantity, itemNotes } = useCartStore();
+	const [editingCartItem, setEditingCartItem] = useState(null);
 
 	const deliveryFee = Number(selectedLocation.fee) || 0;
 	const grandTotal = total + deliveryFee;
@@ -23,6 +28,16 @@ const CartDrawer = ({ isOpen, onClose, cart, total }) => {
 		}
 		onClose();
 		setStep("checkout");
+	};
+
+	const handleEditConfirm = ({ note, extraPrice, quantity }) => {
+		if (!editingCartItem) return;
+		updateItemNote(editingCartItem.cart_id, note, extraPrice);
+		if (quantity !== editingCartItem.quantity) {
+			updateQuantity(editingCartItem.cart_id, quantity - editingCartItem.quantity);
+		}
+		setEditingCartItem(null);
+		toast.success("Updated options! ✨");
 	};
 
 	return (
@@ -64,7 +79,11 @@ const CartDrawer = ({ isOpen, onClose, cart, total }) => {
 					) : (
 						<div className="space-y-2">
 							{cart.map((item) => (
-								<CartItem key={item.cart_id} item={item} />
+								<CartItem
+									key={item.cart_id}
+									item={item}
+									onEditNote={(itm) => setEditingCartItem(itm)}
+								/>
 							))}
 						</div>
 					)}
@@ -106,6 +125,19 @@ const CartDrawer = ({ isOpen, onClose, cart, total }) => {
 					</div>
 				)}
 			</div>
+
+			{/* Edit Item Options Modal */}
+			{editingCartItem && (
+				<ItemCustomizationModal
+					isOpen={Boolean(editingCartItem)}
+					item={editingCartItem}
+					initialNote={editingCartItem.notes || itemNotes[editingCartItem.cart_id] || ""}
+					initialQuantity={editingCartItem.quantity}
+					isEditing={true}
+					onClose={() => setEditingCartItem(null)}
+					onConfirm={handleEditConfirm}
+				/>
+			)}
 		</>
 	);
 };

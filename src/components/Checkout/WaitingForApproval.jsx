@@ -302,18 +302,42 @@ const WaitingForApproval = ({ orderIdProp }) => {
 					</span>
 
 					<div className="divide-y divide-base-200 text-xs">
-						{order.order_items?.map((item, idx) => (
-							<div key={idx} className="py-2 flex justify-between items-center">
-								<div>
-									<span className="font-bold text-base-content">
-										{item.quantity}x {item.name_english || item.name_burmese || item.name_thai}
+						{order.order_items?.map((item, idx) => {
+							const extra = Number(
+								item.extra_price !== undefined
+									? item.extra_price
+									: order.item_extra_prices?.[item.cart_id] || 0
+							);
+							const unitPrice =
+								item.final_price !== undefined
+									? Number(item.final_price)
+									: (Number(item.price) || 0) + extra;
+							const note = (
+								item.notes ||
+								order.item_notes?.[item.cart_id] ||
+								""
+							).trim();
+
+							return (
+								<div
+									key={item.cart_id || idx}
+									className="py-2.5 flex justify-between items-start gap-2">
+									<div className="min-w-0 flex-1">
+										<div className="font-bold text-base-content leading-tight">
+											{item.quantity}x {item.name_english || item.name_burmese || item.name_thai}
+										</div>
+										{note && (
+											<div className="mt-1 text-[11px] text-primary bg-primary/10 px-2 py-0.5 rounded-md font-medium inline-block leading-snug">
+												📝 {note}
+											</div>
+										)}
+									</div>
+									<span className="font-mono font-semibold text-base-content shrink-0">
+										฿{(unitPrice * (item.quantity || 1)).toFixed(2)}
 									</span>
 								</div>
-								<span className="font-mono font-semibold">
-									฿{(Number(item.price || 0) * (item.quantity || 1)).toFixed(2)}
-								</span>
-							</div>
-						))}
+							);
+						})}
 					</div>
 
 					<div className="pt-2 border-t border-base-200 space-y-1 text-xs">

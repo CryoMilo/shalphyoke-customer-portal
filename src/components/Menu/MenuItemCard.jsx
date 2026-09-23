@@ -2,7 +2,7 @@ import { Plus, ImageIcon, Moon, Sun } from "lucide-react";
 import { useLanguageStore, getItemName } from "../../stores/useLanguageStore";
 import { getItemTimeAvailability } from "../../utils/menuAvailability";
 
-const MenuItemCard = ({ item, onAdd }) => {
+const MenuItemCard = ({ item, onAdd, onCustomize }) => {
 	const { currentLang } = useLanguageStore();
 
 	if (!item) return null;
@@ -12,6 +12,10 @@ const MenuItemCard = ({ item, onAdd }) => {
 	const isTimeDisabled = !timeAvailability.isAvailable;
 	const isDisabled = isInactive || isTimeDisabled;
 
+	const hasExtras = Boolean(item.available_extras && item.available_extras.length > 0);
+	const requiresAddon = Boolean(item.requires_addon);
+	const hasOptions = hasExtras || requiresAddon;
+
 	const primaryName = getItemName(item, currentLang);
 	// Secondary subtitle if available and different
 	const secondaryName =
@@ -20,10 +24,30 @@ const MenuItemCard = ({ item, onAdd }) => {
 			: item.name_english;
 	const displayPrice = item.price || 0;
 
+	const handleCardClick = () => {
+		if (isDisabled) return;
+		if (onCustomize) {
+			onCustomize(item);
+		} else if (onAdd) {
+			onAdd();
+		}
+	};
+
+	const handleActionClick = (e) => {
+		e.stopPropagation();
+		if (isDisabled) return;
+		if (hasOptions && onCustomize) {
+			onCustomize(item);
+		} else if (onAdd) {
+			onAdd();
+		}
+	};
+
 	return (
 		<div
-			className={`card bg-base-100 shadow-sm hover:shadow-md transition-all h-full border border-base-200/60 relative overflow-hidden ${
-				isDisabled ? "opacity-65 bg-base-100/60" : ""
+			onClick={handleCardClick}
+			className={`card bg-base-100 shadow-sm hover:shadow-md transition-all h-full border border-base-200/60 relative overflow-hidden group cursor-pointer ${
+				isDisabled ? "opacity-65 bg-base-100/60 cursor-not-allowed" : "active:scale-[0.99]"
 			}`}>
 			{/* Time Tag Badges / Inactive Status Overlay */}
 			{isInactive ? (
@@ -56,13 +80,22 @@ const MenuItemCard = ({ item, onAdd }) => {
 				</div>
 			) : null}
 
+			{/* Options Badge if item has extras or requires addon */}
+			{hasOptions && !isDisabled && (
+				<div className="absolute top-2 right-2 z-10">
+					<span className="badge badge-xs bg-primary/90 text-primary-content font-extrabold text-[9px] px-1.5 py-0.5 shadow-sm">
+						Options
+					</span>
+				</div>
+			)}
+
 			{item.image_url ? (
 				<figure className="aspect-[4/3] w-full overflow-hidden bg-base-200/30 relative">
 					<img
 						src={item.image_url}
 						alt={primaryName}
 						className={`w-full h-full object-cover object-center transition-transform duration-300 ${
-							isDisabled ? "grayscale-[25%]" : "hover:scale-105"
+							isDisabled ? "grayscale-[25%]" : "group-hover:scale-105"
 						}`}
 						loading="lazy"
 					/>
@@ -74,7 +107,7 @@ const MenuItemCard = ({ item, onAdd }) => {
 			)}
 			<div className="card-body p-3.5 flex-grow justify-between">
 				<div>
-					<h3 className="card-title text-sm font-bold line-clamp-2 leading-tight">
+					<h3 className="card-title text-sm font-bold line-clamp-2 leading-tight group-hover:text-primary transition-colors">
 						{primaryName}
 					</h3>
 					{secondaryName && secondaryName !== primaryName && (
@@ -106,9 +139,10 @@ const MenuItemCard = ({ item, onAdd }) => {
 						</span>
 					) : (
 						<button
+							type="button"
 							className="btn btn-primary btn-sm btn-circle shrink-0 shadow-sm hover:scale-105 active:scale-95 transition-all"
-							onClick={onAdd}
-							title="Add to Cart">
+							onClick={handleActionClick}
+							title={hasOptions ? "Customize" : "Add to Cart"}>
 							<Plus className="w-4 h-4 text-primary-content" />
 						</button>
 					)}

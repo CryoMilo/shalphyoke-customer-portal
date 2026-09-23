@@ -2,13 +2,21 @@ import { useState } from "react";
 import { useCartStore } from "../../stores/useCartStore";
 import MenuItemCard from "./MenuItemCard";
 import CategoryCardGrid from "./CategoryCardGrid";
+import ItemCustomizationModal from "./ItemCustomizationModal";
 import { CATEGORY_DEFINITIONS } from "../../utils/categoryDefinitions";
 import { ArrowLeft } from "lucide-react";
+import toast from "react-hot-toast";
 
 const MenuGrid = ({ items = [], specials = [] }) => {
 	// null means viewing the Category Grid overview (kiosk-style)
 	const [selectedCategoryId, setSelectedCategoryId] = useState(null);
+	const [customizingItem, setCustomizingItem] = useState(null);
 	const { addToCart } = useCartStore();
+
+	const handleCustomizationConfirm = ({ item, note, extraPrice, quantity }) => {
+		addToCart(item, note, extraPrice, quantity);
+		toast.success(`Added to cart! 🍜`);
+	};
 
 	if (!items || items.length === 0) {
 		return (
@@ -21,11 +29,20 @@ const MenuGrid = ({ items = [], specials = [] }) => {
 	// 1. If no category is selected, show the Category Grid overview
 	if (!selectedCategoryId) {
 		return (
-			<CategoryCardGrid
-				items={items}
-				specials={specials}
-				onSelectCategory={setSelectedCategoryId}
-			/>
+			<>
+				<CategoryCardGrid
+					items={items}
+					specials={specials}
+					onSelectCategory={setSelectedCategoryId}
+				/>
+
+				<ItemCustomizationModal
+					isOpen={Boolean(customizingItem)}
+					item={customizingItem}
+					onClose={() => setCustomizingItem(null)}
+					onConfirm={handleCustomizationConfirm}
+				/>
+			</>
 		);
 	}
 
@@ -122,12 +139,22 @@ const MenuGrid = ({ items = [], specials = [] }) => {
 							key={item.id}
 							item={item}
 							onAdd={() => addToCart(item)}
+							onCustomize={(itm) => setCustomizingItem(itm)}
 						/>
 					))}
 				</div>
 			)}
+
+			{/* Customization Modal */}
+			<ItemCustomizationModal
+				isOpen={Boolean(customizingItem)}
+				item={customizingItem}
+				onClose={() => setCustomizingItem(null)}
+				onConfirm={handleCustomizationConfirm}
+			/>
 		</div>
 	);
 };
 
 export default MenuGrid;
+

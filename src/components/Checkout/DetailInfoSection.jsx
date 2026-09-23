@@ -15,6 +15,7 @@ import {
 	Banknote,
 	Smartphone,
 	QrCode,
+	ShoppingBag,
 } from "lucide-react";
 import { useOrderFlowStore } from "../../stores/useOrderFlowStore";
 import { useCartStore } from "../../stores/useCartStore";
@@ -22,6 +23,7 @@ import { customerAPI } from "../../api/customers";
 import { orderAPI } from "../../api/orders";
 import { PAYMENT_CONFIG } from "../../utils/paymentConfig";
 import { formatDeliveryAddress, formatBuildingInfo } from "../../utils/deliveryLocations";
+import { getCartTotal } from "../../utils/cartUtils";
 import OrderStepper from "../Shared/OrderStepper";
 import toast from "react-hot-toast";
 
@@ -34,7 +36,7 @@ const DetailInfoSection = () => {
 		setCurrentOrder,
 	} = useOrderFlowStore();
 
-	const { cart, clearCart } = useCartStore();
+	const { cart, clearCart, itemNotes, itemExtraPrices } = useCartStore();
 
 	// Local states for checkout form
 	const [name, setName] = useState(customerInfo.name || "");
@@ -56,11 +58,8 @@ const DetailInfoSection = () => {
 	const searchTimeoutRef = useRef(null);
 	const nameContainerRef = useRef(null);
 
-	// Calculate totals
-	const subtotal = cart.reduce(
-		(sum, item) => sum + (Number(item.price) || 0) * (item.quantity || 1),
-		0
-	);
+	// Calculate totals using normalized cart items with extra prices
+	const subtotal = getCartTotal(cart);
 	const deliveryFee = Number(selectedLocation.fee) || 0;
 	const totalAmount = subtotal + deliveryFee;
 
@@ -204,7 +203,33 @@ const DetailInfoSection = () => {
 				dropoffNote: notes,
 			});
 
-			// 2. Insert delivery order
+			// 2. Format order items conforming to POS schema
+			const orderItems = cart.map((item) => {
+				const extraPrice = Number(
+					item.extra_price !== undefined
+						? item.extra_price
+						: itemExtraPrices[item.cart_id] || 0
+				);
+				const finalPrice = Number(
+					item.final_price !== undefined
+						? item.final_price
+						: (Number(item.price) || 0) + extraPrice
+				);
+				return {
+					id: item.id,
+					cart_id: item.cart_id,
+					name_burmese: item.name_burmese || "",
+					name_english: item.name_english || "",
+					name_thai: item.name_thai || "",
+					price: Number(item.price) || 0,
+					quantity: Number(item.quantity) || 1,
+					extra_price: extraPrice,
+					final_price: finalPrice,
+					notes: (item.notes || itemNotes[item.cart_id] || "").trim(),
+				};
+			});
+
+			// 3. Insert delivery order
 			const orderPayload = {
 				customerId: customerId || null,
 				customerName: trimmedName,
@@ -213,7 +238,9 @@ const DetailInfoSection = () => {
 				cleanAddress: selectedLocation.apartmentName, // Normalized clean address to update customer
 				cleanBuildingInfo: cleanBuilding, // Normalized clean building_info to update customer
 				deliveryFee: deliveryFee,
-				items: cart,
+				items: orderItems,
+				itemNotes: itemNotes,
+				itemExtraPrices: itemExtraPrices,
 				subtotal: subtotal,
 				totalAmount: totalAmount,
 				paymentType: paymentType, // 'promptpay' | 'truemoney' | 'cod'
@@ -588,12 +615,62 @@ const DetailInfoSection = () => {
 				</div>
 			</div>
 
-			{/* 4. Total & Submit Button */}
+			{/* 4. Order Items Summary */}
+			<div className="card bg-base-100 shadow-sm border border-base-200 rounded-2xl">
+				<div className="card-body p-4 space-y-3">
+					<div className="flex items-center justify-between">
+						<span className="text-xs font-bold uppercase tracking-wider text-base-content/70 flex items-center gap-1.5">
+							<ShoppingBag className="w-3.5 h-3.5 text-primary" />
+							Items Summary ({cart.length})
+						</span>
+						<button
+							type="button"
+							onClick={() => setStep("menu")}
+							className="text-primary hover:underline text-[11px] font-semibold">
+							Edit Order
+						</button>
+					</div>
+
+					<div className="divide-y divide-base-200 text-xs">
+						{cart.map((item) => {
+							const extra = Number(
+								item.extra_price !== undefined
+									? item.extra_price
+									: itemExtraPrices[item.cart_id] || 0
+							);
+							const unitPrice = (Number(item.price) || 0) + extra;
+							const note = (item.notes || itemNotes[item.cart_id] || "").trim();
+
+							return (
+								<div
+									key={item.cart_id}
+									className="py-2.5 flex items-start justify-between gap-2">
+									<div className="min-w-0 flex-1">
+										<div className="font-bold text-base-content leading-tight">
+											{item.quantity}x {item.name_english || item.name_burmese}
+										</div>
+										{note && (
+											<div className="mt-1 text-[11px] text-primary bg-primary/10 px-2 py-0.5 rounded-md font-medium inline-block leading-snug">
+												📝 {note}
+											</div>
+										)}
+									</div>
+									<span className="font-mono font-bold text-base-content shrink-0">
+										฿{(unitPrice * (item.quantity || 1)).toFixed(2)}
+									</span>
+								</div>
+							);
+						})}
+					</div>
+				</div>
+			</div>
+
+			{/* 5. Total & Submit Button */}
 			<div className="card bg-base-100 shadow-sm border border-base-200 rounded-2xl">
 				<div className="card-body p-4 space-y-2.5">
 					<div className="space-y-1.5 text-xs">
 						<div className="flex justify-between text-base-content/70">
-							<span>Food Subtotal ({cart.length} items)</span>
+							<span>Food Subtotal ({cart.reduce((sum, i) => sum + (i.quantity || 1), 0)} items)</span>
 							<span className="font-semibold font-mono">฿{subtotal.toFixed(2)}</span>
 						</div>
 						<div className="flex justify-between text-base-content/70">
