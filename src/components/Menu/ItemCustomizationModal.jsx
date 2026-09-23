@@ -2,20 +2,13 @@ import { useState, useMemo } from "react";
 import { X, Plus, Minus, Check, Sparkles, MessageSquare } from "lucide-react";
 import { useLanguageStore, getItemName } from "../../stores/useLanguageStore";
 
-// Common quick note presets for customer convenience
-const QUICK_NOTE_PRESETS = [
-	{ id: "less_spicy", label: "Less Spicy 🌶️", burmese: "အစပ်လျှော့" },
-	{ id: "spicy", label: "Extra Spicy 🌶️🌶️", burmese: "အစပ်ပို" },
-	{ id: "no_coriander", label: "No Coriander 🌿", burmese: "နံနံပင်မထည့်ပါ" },
-	{ id: "no_onion", label: "No Onion 🧅", burmese: "ကြက်သွန်နီမထည့်ပါ" },
-	{ id: "soup_separate", label: "Soup on Side 🥣", burmese: "ဟင်းရည်သီးသန့်" },
-];
+// Moderate character limit on customer item notes (~15-20 words)
+const MAX_NOTE_LENGTH = 100;
 
 const parseInitialCustomization = (item, initialNote, initialQuantity) => {
 	const availableExtras = item?.available_extras || [];
 	const qty = Math.max(1, Number(initialQuantity) || 1);
 	let extraIds = [];
-	const quickNotes = [];
 	let custom = "";
 
 	if (initialNote) {
@@ -45,14 +38,7 @@ const parseInitialCustomization = (item, initialNote, initialQuantity) => {
 
 			if (isExtraName) return;
 
-			const foundPreset = QUICK_NOTE_PRESETS.find(
-				(p) => p.label === part || p.burmese === part
-			);
-			if (foundPreset) {
-				quickNotes.push(foundPreset.label);
-			} else {
-				custom = custom ? `${custom}, ${part}` : part;
-			}
+			custom = custom ? `${custom}, ${part}` : part;
 		});
 	} else {
 		extraIds = availableExtras.filter((e) => e.is_default).map((e) => e.id);
@@ -61,8 +47,7 @@ const parseInitialCustomization = (item, initialNote, initialQuantity) => {
 	return {
 		quantity: qty,
 		selectedExtraIds: extraIds,
-		selectedQuickNotes: quickNotes,
-		customNote: custom,
+		customNote: custom.slice(0, MAX_NOTE_LENGTH),
 	};
 };
 
@@ -83,7 +68,6 @@ const ItemCustomizationModalContent = ({
 
 	const [quantity, setQuantity] = useState(initialData.quantity);
 	const [selectedExtraIds, setSelectedExtraIds] = useState(initialData.selectedExtraIds);
-	const [selectedQuickNotes, setSelectedQuickNotes] = useState(initialData.selectedQuickNotes);
 	const [customNote, setCustomNote] = useState(initialData.customNote);
 
 	const availableExtras = item?.available_extras || [];
@@ -102,16 +86,6 @@ const ItemCustomizationModalContent = ({
 				return prev.filter((id) => id !== extraId);
 			}
 			return [...prev, extraId];
-		});
-	};
-
-	// Toggle quick note preset
-	const handleToggleQuickNote = (noteLabel) => {
-		setSelectedQuickNotes((prev) => {
-			if (prev.includes(noteLabel)) {
-				return prev.filter((n) => n !== noteLabel);
-			}
-			return [...prev, noteLabel];
 		});
 	};
 
@@ -134,7 +108,7 @@ const ItemCustomizationModalContent = ({
 	const handleSave = () => {
 		if (!isAddonRequirementMet) return;
 
-		// Compile clean unified note string: [Extras, Quick Notes, Custom Note]
+		// Compile clean unified note string: [Extras, Custom Note]
 		const noteParts = [];
 
 		selectedExtrasList.forEach((extra) => {
@@ -145,10 +119,9 @@ const ItemCustomizationModalContent = ({
 			if (extraName) noteParts.push(extraName.trim());
 		});
 
-		selectedQuickNotes.forEach((qn) => noteParts.push(qn));
-
-		if (customNote.trim()) {
-			noteParts.push(customNote.trim());
+		const trimmedCustom = customNote.trim().slice(0, MAX_NOTE_LENGTH);
+		if (trimmedCustom) {
+			noteParts.push(trimmedCustom);
 		}
 
 		const combinedNote = noteParts.join(", ");
@@ -280,41 +253,34 @@ const ItemCustomizationModalContent = ({
 						</div>
 					)}
 
-					{/* 2. Special Instructions & Quick Notes */}
-					<div className="space-y-2.5 pt-1">
-						<label className="text-xs font-black uppercase tracking-wider text-base-content/70 flex items-center gap-1.5">
-							<MessageSquare className="w-3.5 h-3.5 text-primary" />
-							<span>Special Instructions</span>
-						</label>
-
-						{/* Quick Tap Chips */}
-						<div className="flex flex-wrap gap-1.5">
-							{QUICK_NOTE_PRESETS.map((preset) => {
-								const isSelected = selectedQuickNotes.includes(preset.label);
-								return (
-									<button
-										key={preset.id}
-										type="button"
-										onClick={() => handleToggleQuickNote(preset.label)}
-										className={`px-3 py-1.5 rounded-full text-xs font-extrabold transition-all border ${
-											isSelected
-												? "bg-secondary text-secondary-content border-secondary shadow-xs scale-102"
-												: "bg-base-200 text-base-content/70 border-base-300/80 hover:border-secondary/50"
-										}`}>
-										{preset.label}
-									</button>
-								);
-							})}
+					{/* 2. Special Instructions / Custom Notes with Limit */}
+					<div className="space-y-2 pt-1">
+						<div className="flex items-center justify-between">
+							<label className="text-xs font-black uppercase tracking-wider text-base-content/70 flex items-center gap-1.5">
+								<MessageSquare className="w-3.5 h-3.5 text-primary" />
+								<span>Special Instructions</span>
+							</label>
+							<span
+								className={`text-[10px] font-mono font-bold ${
+									customNote.length >= MAX_NOTE_LENGTH
+										? "text-error font-extrabold"
+										: "text-base-content/40"
+								}`}>
+								{customNote.length}/{MAX_NOTE_LENGTH}
+							</span>
 						</div>
 
-						{/* Freeform Note Textarea */}
-						<input
-							type="text"
+						<textarea
+							rows={2}
+							maxLength={MAX_NOTE_LENGTH}
 							value={customNote}
 							onChange={(e) => setCustomNote(e.target.value)}
-							placeholder="Add custom note (e.g. sauce on side)..."
-							className="input input-sm w-full rounded-xl bg-base-200/60 border-base-300 text-xs font-medium focus:border-primary"
+							placeholder="e.g. less spicy, soup on side, no coriander..."
+							className="textarea textarea-bordered w-full rounded-2xl bg-base-200/50 border-base-300 text-xs font-medium focus:border-primary resize-none placeholder:text-base-content/40 leading-relaxed"
 						/>
+						<p className="text-[10px] text-base-content/45 font-medium">
+							Max {MAX_NOTE_LENGTH} characters for kitchen instructions.
+						</p>
 					</div>
 				</div>
 
@@ -363,4 +329,3 @@ const ItemCustomizationModal = (props) => {
 };
 
 export default ItemCustomizationModal;
-
