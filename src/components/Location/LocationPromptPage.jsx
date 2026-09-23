@@ -5,11 +5,11 @@ import {
 	Check,
 	ArrowRight,
 	ShieldCheck,
+	ExternalLink,
 } from "lucide-react";
 import { FIXED_APARTMENTS } from "../../utils/deliveryLocations";
 import { useOrderFlowStore } from "../../stores/useOrderFlowStore";
 import OrderStepper from "../Shared/OrderStepper";
-import logo from "../../../src/assets/logo.png";
 
 const LocationPromptPage = () => {
 	const { selectedLocation, setLocation, setStep } = useOrderFlowStore();
@@ -55,17 +55,76 @@ const LocationPromptPage = () => {
 				<OrderStepper currentStep={1} />
 			</div>
 
-			{/* Welcome Hero Card */}
-			<div className="bg-gradient-to-br from-primary/10 via-base-100 to-base-200/50 p-5 rounded-3xl border border-primary/20 shadow-sm text-center space-y-2">
-				<div className="w-12 h-12 bg-primary text-primary-content rounded-2xl flex items-center justify-center mx-auto shadow-md">
-					<MapPin className="w-6 h-6" />
-				</div>
-				<h1 className="text-xl font-extrabold text-base-content tracking-tight">
-					Where should we deliver?
-				</h1>
-				<p className="text-xs text-base-content/70 max-w-xs mx-auto leading-relaxed">
-					Choose your nearby apartment or hotel. Delivery prices are fixed and affordable.
-				</p>
+			{/* Location Photo Card with Seamless Crossfade & Google Map Link */}
+			<div className="relative w-full h-52 sm:h-60 rounded-3xl overflow-hidden shadow-lg border border-base-300/80 bg-base-300">
+				{/* Stacked Photos with GPU-accelerated Crossfade */}
+				{FIXED_APARTMENTS.map((apt) => {
+					if (!apt.image) return null;
+					const isCurrent = selectedApt?.id === apt.id;
+					return (
+						<img
+							key={apt.id}
+							src={apt.image}
+							alt={apt.name}
+							className={`absolute inset-0 w-full h-full object-cover transition-all duration-500 ease-in-out ${
+								isCurrent
+									? "opacity-100 scale-100 z-0"
+									: "opacity-0 scale-105 pointer-events-none -z-10"
+							}`}
+						/>
+					);
+				})}
+
+				{/* Fallback visual if no apartment chosen or chosen apartment has no photo */}
+				{(!selectedApt || !selectedApt.image) && (
+					<div className="absolute inset-0 w-full h-full flex flex-col items-center justify-center p-6 text-center bg-gradient-to-br from-primary/15 via-base-100 to-base-200 z-0">
+						<div className="w-12 h-12 rounded-2xl bg-primary text-primary-content flex items-center justify-center shadow-md mb-2">
+							<MapPin className="w-6 h-6" />
+						</div>
+						<h1 className="text-lg sm:text-xl font-extrabold text-base-content tracking-tight">
+							{selectedApt ? selectedApt.name : "Where should we deliver?"}
+						</h1>
+						<p className="text-xs text-base-content/70 max-w-xs mt-1 leading-relaxed">
+							{selectedApt
+								? "Fixed-rate apartment delivery"
+								: "Choose your nearby apartment or hotel. Delivery prices are fixed and affordable."}
+						</p>
+					</div>
+				)}
+
+				{/* High-contrast bottom gradient for overlay text */}
+				{selectedApt && selectedApt.image && (
+					<div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent z-10 pointer-events-none" />
+				)}
+
+				{/* Bottom Left: Apartment Name & Delivery Fee Badge */}
+				{selectedApt && (
+					<div className="absolute bottom-3 left-4 z-20 max-w-[62%] text-left">
+						<h2 className="text-white text-base sm:text-lg font-black tracking-tight drop-shadow-md leading-tight">
+							{selectedApt.name}
+							{building ? ` (${building})` : ""}
+						</h2>
+						<div className="flex items-center gap-1.5 mt-1">
+							<span className="badge badge-primary font-black text-[11px] shadow-sm">
+								฿{selectedApt.fee} Delivery
+							</span>
+						</div>
+					</div>
+				)}
+
+				{/* Bottom Right: Google Map Button */}
+				<a
+					href={
+						selectedApt?.mapUrl ||
+						"https://www.google.com/maps/search/?api=1&query=Shal+Phyoke+Hua+Mak+Bangkok"
+					}
+					target="_blank"
+					rel="noopener noreferrer"
+					className="absolute bottom-3 right-3 z-20 btn btn-sm bg-base-100/95 hover:bg-base-100 text-base-content border border-white/20 backdrop-blur-md shadow-xl rounded-xl flex items-center gap-1.5 font-extrabold text-xs transition-all hover:scale-105 active:scale-95">
+					<MapPin className="w-3.5 h-3.5 text-primary" />
+					<span>Google Maps</span>
+					<ExternalLink className="w-3 h-3 opacity-60" />
+				</a>
 			</div>
 
 			{/* 1. Apartments & Hotels List */}
