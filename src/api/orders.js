@@ -1,4 +1,5 @@
 import { supabase } from "./supabase";
+import { customerAPI } from "./customers";
 
 export const orderAPI = {
 	/**
@@ -17,20 +18,24 @@ export const orderAPI = {
 			localStorage.setItem("delivery_session_token", sessionToken);
 		}
 
+		// Map payment method to DB enum ('cash' or 'qr' or 'unpaid')
+		const paymentMethod = orderData.paymentType === "cod" ? "cash" : "qr";
+
 		const payload = {
 			order_number: orderNumber,
 			order_type: "delivery",
 			order_source: "qr", // Adheres to DB check constraint ['pos', 'qr']
+			customer_id: orderData.customerId || null,
 			table_number: null,
 			customer_name: orderData.customerName || null,
 			customer_phone: orderData.customerPhone || null,
-			delivery_address: orderData.deliveryAddress,
+			delivery_address: orderData.deliveryAddress || null,
 			delivery_fee: orderData.deliveryFee || 0,
 			order_items: orderData.items,
 			subtotal: orderData.subtotal,
 			discount_amount: 0,
 			total_amount: orderData.totalAmount,
-			payment_method: orderData.paymentMethod || "unpaid",
+			payment_method: paymentMethod,
 			payment_status: "unpaid",
 			pos_order_status: "pending",
 			notes: orderData.notes || null,
@@ -39,6 +44,10 @@ export const orderAPI = {
 			item_extra_prices: orderData.itemExtraPrices || {},
 			session_token: sessionToken,
 		};
+
+		if (orderData.paymentSlipUrl) {
+			payload.payment_slip_url = orderData.paymentSlipUrl;
+		}
 
 		// Attempt insertion
 		const { data, error } = await supabase
@@ -52,18 +61,29 @@ export const orderAPI = {
 			throw error;
 		}
 
+		// Clean up and update customer's normalized address and building_info in DB
+		const resolvedCustomerId = data?.customer_id || orderData.customerId;
+		if (resolvedCustomerId && (orderData.cleanAddress || orderData.cleanBuildingInfo)) {
+			customerAPI.updateCustomerAddressAndBuilding(
+				resolvedCustomerId,
+				orderData.cleanAddress,
+				orderData.cleanBuildingInfo,
+				orderData.customerPhone
+			);
+		}
+
 		return data;
 	},
 
 	/**
-	 * Upload payment slip image to Supabase Storage and update order record
+	 * Upload payment slip image to Supabase Storage and optionally update order record
 	 */
-	uploadPaymentSlip: async (orderId, file) => {
+	uploadPaymentSlip: async (orderIdOrTempId, file) => {
 		if (!file) throw new Error("No file provided");
 
 		const fileExt = file.name.split(".").pop();
 		const cleanFileName = `${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${fileExt}`;
-		const filePath = `${orderId}/${cleanFileName}`;
+		const filePath = `${orderIdOrTempId}/${cleanFileName}`;
 
 		// 1. Upload to Supabase Storage 'payment-slips'
 		const { error: uploadError } = await supabase.storage
@@ -83,24 +103,7 @@ export const orderAPI = {
 			data: { publicUrl },
 		} = supabase.storage.from("payment-slips").getPublicUrl(filePath);
 
-		// 3. Update orders table with payment_slip_url
-		const { data, error: updateError } = await supabase
-			.from("orders")
-			.update({
-				payment_slip_url: publicUrl,
-				updated_at: new Date().toISOString(),
-			})
-			.eq("id", orderId)
-			.select()
-			.single();
-
-		if (updateError) {
-			console.error("Failed to update order with slip URL:", updateError);
-			// Fallback: If column does not exist yet, log warning and return url
-			return { payment_slip_url: publicUrl, warning: updateError.message };
-		}
-
-		return data;
+		return publicUrl;
 	},
 
 	/**

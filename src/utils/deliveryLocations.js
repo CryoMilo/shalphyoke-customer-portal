@@ -1,12 +1,18 @@
 /**
- * Fixed apartment delivery configurations around Shalphyoke
+ * Fixed apartment & hotel delivery configurations around Shalphyoke
  */
 export const FIXED_APARTMENTS = [
+	{
+		id: "rye",
+		name: "Rye",
+		fee: 10,
+		buildings: ["Building A", "Building B"],
+	},
 	{
 		id: "richpark",
 		name: "Richpark",
 		fee: 20,
-		buildings: [], // Single building or not specified
+		buildings: [], // Single building
 	},
 	{
 		id: "lumpini",
@@ -33,20 +39,26 @@ export const FIXED_APARTMENTS = [
 		buildings: [],
 	},
 	{
-		id: "rye",
-		name: "Rye",
-		fee: 10,
-		buildings: ["Building A", "Building B"],
+		id: "zayn_hotel",
+		name: "Zayn Hotel",
+		fee: 20,
+		buildings: [],
 	},
 ];
 
 /**
  * Format full delivery address string
  */
-export const formatDeliveryAddress = ({ apartment, building, roomNumber, dropoffNote }) => {
-	const aptName = apartment?.name || "";
+export const formatDeliveryAddress = ({ apartment, building, dropoffNote }) => {
+	const aptName = typeof apartment === "string" ? apartment : apartment?.name || "";
 	const bldg = building ? ` (${building})` : "";
-	const room = roomNumber ? ` Room: ${roomNumber}` : "";
 	const note = dropoffNote ? ` - Note: ${dropoffNote}` : "";
-	return `${aptName}${bldg}${room}${note}`.trim();
+	return `${aptName}${bldg}${note}`.trim();
+};
+
+/**
+ * Clean and normalize building_info string
+ */
+export const formatBuildingInfo = ({ building }) => {
+	return building ? building.trim() : "";
 };

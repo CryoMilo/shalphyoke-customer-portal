@@ -1,39 +1,53 @@
 import { useCartStore } from "../../stores/useCartStore";
 import { useLanguageStore } from "../../stores/useLanguageStore";
+import { useOrderFlowStore } from "../../stores/useOrderFlowStore";
 import { getCartItemCount } from "../../utils/cartUtils";
-import { ShoppingBag, Bike, Globe } from "lucide-react";
+import { ShoppingBag, MapPin, Globe } from "lucide-react";
 import logo from "../../../src/assets/logo.png";
 import { LANGUAGES } from "../../utils/constants";
 
-const QRHeader = ({ onCartClick }) => {
+const QRHeader = ({ onCartClick, onLocationClick }) => {
 	const { cart } = useCartStore();
 	const { currentLang, setLanguage } = useLanguageStore();
+	const { selectedLocation } = useOrderFlowStore();
 
 	const cartCount = getCartItemCount(cart);
 
+	const locationLabel = selectedLocation?.apartmentName
+		? `${selectedLocation.apartmentName}${
+				selectedLocation.building ? ` (${selectedLocation.building})` : ""
+		  } • ฿${selectedLocation.fee}`
+		: "Select Location";
+
 	return (
 		<header className="sticky top-0 z-40 bg-base-100/90 backdrop-blur-lg border-b border-base-300 shadow-sm">
-			<div className="navbar max-w-4xl mx-auto px-4 py-2.5">
+			<div className="navbar max-w-4xl mx-auto px-4 py-2 flex items-center justify-between">
 				{/* Brand - Left */}
-				<div className="navbar-start gap-2.5">
+				<div className="flex items-center gap-2">
 					<div className="avatar">
-						<div className="w-11 h-11 rounded-full border border-primary/20 p-0.5 bg-base-100 shadow-sm">
+						<div className="w-10 h-10 rounded-full border border-primary/20 p-0.5 bg-base-100 shadow-sm">
 							<img src={logo} alt="Shal Phyoke Logo" className="rounded-full object-cover" />
 						</div>
 					</div>
 					<div>
-						<div className="text-base font-extrabold text-secondary tracking-tight">
+						<div className="text-sm font-extrabold text-secondary tracking-tight leading-none">
 							Shal Phyoke
 						</div>
-						<div className="flex items-center gap-1 text-[11px] font-semibold text-primary">
-							<Bike className="w-3.5 h-3.5" />
-							<span>Apartment Delivery</span>
-						</div>
+						{/* Location Clickable Pill */}
+						<button
+							type="button"
+							onClick={onLocationClick}
+							className="mt-1 flex items-center gap-1 text-[11px] font-bold text-primary hover:underline transition-all">
+							<MapPin className="w-3 h-3 shrink-0" />
+							<span className="truncate max-w-[130px] sm:max-w-[200px]">
+								{locationLabel}
+							</span>
+						</button>
 					</div>
 				</div>
 
 				{/* Right side: Language switcher + Cart */}
-				<div className="navbar-end gap-2">
+				<div className="flex items-center gap-2">
 					{/* Language Switcher Dropdown */}
 					<div className="dropdown dropdown-end">
 						<label
