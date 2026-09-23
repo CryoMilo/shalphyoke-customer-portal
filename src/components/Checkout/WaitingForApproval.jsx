@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useOrderFlowStore } from "../../stores/useOrderFlowStore";
 import { orderAPI } from "../../api/orders";
+import OrderStepper from "../Shared/OrderStepper";
 import toast from "react-hot-toast";
 
 const WaitingForApproval = ({ orderIdProp }) => {
@@ -136,6 +137,11 @@ const WaitingForApproval = ({ orderIdProp }) => {
 					<RotateCcw className="w-3.5 h-3.5" />
 					New Order
 				</button>
+			</div>
+
+			{/* Stepped Progress Line */}
+			<div className="bg-base-100 border border-base-200 rounded-2xl p-3 shadow-sm">
+				<OrderStepper currentStep={4} />
 			</div>
 
 			{/* ============================================================ */}

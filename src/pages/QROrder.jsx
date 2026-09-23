@@ -8,7 +8,8 @@ import CartDrawer from "../components/Cart/CartDrawer";
 import LocationPromptPage from "../components/Location/LocationPromptPage";
 import DetailInfoSection from "../components/Checkout/DetailInfoSection";
 import WaitingForApproval from "../components/Checkout/WaitingForApproval";
-import { ShoppingBag, MapPin, Sparkles, ArrowRight } from "lucide-react";
+import OrderStepper from "../components/Shared/OrderStepper";
+import { ShoppingBag, ArrowRight } from "lucide-react";
 import toast from "react-hot-toast";
 import { getCartTotal, getCartItemCount } from "../utils/cartUtils";
 
@@ -76,44 +77,9 @@ const QROrder = () => {
 
 	return (
 		<>
-			{/* Welcome Delivery Hero Banner with Clickable Location */}
-			<div className="bg-gradient-to-r from-primary/10 via-primary/5 to-base-100 border border-primary/20 rounded-2xl p-4 sm:p-5 mb-5 shadow-sm">
-				<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-					<div>
-						<div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold mb-2">
-							<Sparkles className="w-3.5 h-3.5" />
-							<span>Apartment Delivery Portal</span>
-						</div>
-						<h1 className="text-lg sm:text-xl font-extrabold text-base-content tracking-tight">
-							Authentic Burmese Flavors Delivered Fresh
-						</h1>
-						<p className="text-xs text-base-content/70 mt-1">
-							Fixed-rate delivery to Rye (฿10), Richpark, Lumpini, Blitz, The Rich, P Park, Zayn Hotel (฿20).
-						</p>
-					</div>
-
-					{/* Active Location Card - Tap to open Location Page */}
-					<button
-						type="button"
-						onClick={() => setStep("location")}
-						className="flex items-center gap-2.5 p-3 rounded-xl bg-base-100 border border-base-200 hover:border-primary text-left transition-all shrink-0 shadow-sm group">
-						<div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-							<MapPin className="w-4 h-4" />
-						</div>
-						<div>
-							<div className="text-[10px] font-bold uppercase tracking-wider text-base-content/50">
-								Delivering To:
-							</div>
-							<div className="text-xs font-extrabold text-base-content">
-								{selectedLocation.apartmentName}
-								{selectedLocation.building ? ` (${selectedLocation.building})` : ""}
-							</div>
-							<div className="text-[10px] text-primary font-bold">
-								Delivery: ฿{selectedLocation.fee} &bull; Tap to change
-							</div>
-						</div>
-					</button>
-				</div>
+			{/* Stepped Horizontal Progress Line */}
+			<div className="bg-base-100 border border-base-200 rounded-2xl p-3 sm:p-4 mb-4 shadow-sm">
+				<OrderStepper currentStep={2} />
 			</div>
 
 			{/* Menu Categories & Items Grid */}

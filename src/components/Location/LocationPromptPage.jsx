@@ -4,26 +4,25 @@ import {
 	Building2,
 	Check,
 	ArrowRight,
-	ArrowLeft,
 	ShieldCheck,
-	Sparkles,
 } from "lucide-react";
 import { FIXED_APARTMENTS } from "../../utils/deliveryLocations";
 import { useOrderFlowStore } from "../../stores/useOrderFlowStore";
+import OrderStepper from "../Shared/OrderStepper";
 import logo from "../../../src/assets/logo.png";
 
 const LocationPromptPage = () => {
 	const { selectedLocation, setLocation, setStep } = useOrderFlowStore();
 
 	const [apartmentId, setApartmentId] = useState(
-		selectedLocation.apartmentId || FIXED_APARTMENTS[0].id
+		selectedLocation.apartmentId || null
 	);
 	const [building, setBuilding] = useState(
-		selectedLocation.building || FIXED_APARTMENTS[0].buildings[0] || ""
+		selectedLocation.building || ""
 	);
 
 	const selectedApt =
-		FIXED_APARTMENTS.find((apt) => apt.id === apartmentId) || FIXED_APARTMENTS[0];
+		FIXED_APARTMENTS.find((apt) => apt.id === apartmentId) || null;
 
 	const handleApartmentSelect = (apt) => {
 		setApartmentId(apt.id);
@@ -38,6 +37,7 @@ const LocationPromptPage = () => {
 	};
 
 	const handleConfirm = () => {
+		if (!selectedApt) return;
 		setLocation({
 			apartmentId: selectedApt.id,
 			apartmentName: selectedApt.name,
@@ -50,38 +50,9 @@ const LocationPromptPage = () => {
 
 	return (
 		<div className="max-w-md mx-auto py-2 px-1 space-y-5 animate-fadeIn pb-16">
-			{/* Top Header / Back navigation if already had confirmed location */}
-			<div className="flex items-center justify-between">
-				{selectedLocation.isConfirmed ? (
-					<button
-						type="button"
-						className="btn btn-sm btn-ghost gap-1.5 font-bold -ml-2"
-						onClick={() => setStep("menu")}>
-						<ArrowLeft className="w-4 h-4" />
-						Back to Menu
-					</button>
-				) : (
-					<div className="flex items-center gap-2">
-						<div className="avatar">
-							<div className="w-9 h-9 rounded-full border border-primary/20 p-0.5 bg-base-100 shadow-sm">
-								<img src={logo} alt="Shal Phyoke Logo" className="rounded-full object-cover" />
-							</div>
-						</div>
-						<div>
-							<div className="text-xs font-bold text-secondary tracking-tight leading-none">
-								Shal Phyoke
-							</div>
-							<div className="text-[10px] text-primary font-semibold">
-								Customer Portal
-							</div>
-						</div>
-					</div>
-				)}
-
-				<div className="inline-flex items-center gap-1 text-[11px] font-bold text-primary bg-primary/10 px-2.5 py-1 rounded-full">
-					<Sparkles className="w-3 h-3" />
-					<span>Step 1 of 3</span>
-				</div>
+			{/* Stepped Horizontal Progress Line */}
+			<div className="bg-base-100 border border-base-200 rounded-2xl p-3 sm:p-4 shadow-sm">
+				<OrderStepper currentStep={1} />
 			</div>
 
 			{/* Welcome Hero Card */}
@@ -141,7 +112,7 @@ const LocationPromptPage = () => {
 			</div>
 
 			{/* 2. Building / Tower Choice (Crisp, Solid, High-Contrast Visibility) */}
-			{selectedApt.buildings?.length > 0 && (
+			{selectedApt && selectedApt.buildings?.length > 0 && (
 				<div className="space-y-2.5 pt-2 border-t border-base-200">
 					<label className="text-xs font-bold uppercase tracking-wider text-base-content/70 flex items-center gap-1.5 px-1">
 						<Building2 className="w-4 h-4 text-primary" />
@@ -173,31 +144,38 @@ const LocationPromptPage = () => {
 			)}
 
 			{/* 3. Delivery Fee Summary Card */}
-			<div className="bg-base-100 rounded-2xl p-4 border border-base-300/80 shadow-sm flex items-center justify-between">
-				<div className="flex items-center gap-2.5">
-					<div className="w-8 h-8 rounded-xl bg-success/10 text-success flex items-center justify-center shrink-0">
-						<ShieldCheck className="w-4 h-4" />
+			{selectedApt ? (
+				<div className="bg-base-100 rounded-2xl p-4 border border-base-300/80 shadow-sm flex items-center justify-between animate-fadeIn">
+					<div className="flex items-center gap-2.5">
+						<div className="w-8 h-8 rounded-xl bg-success/10 text-success flex items-center justify-center shrink-0">
+							<ShieldCheck className="w-4 h-4" />
+						</div>
+						<div>
+							<div className="font-extrabold text-xs text-base-content">
+								{selectedApt.name}
+								{building ? ` (${building})` : ""}
+							</div>
+							<div className="text-[11px] text-base-content/60">
+								Fixed delivery price
+							</div>
+						</div>
 					</div>
-					<div>
-						<div className="font-extrabold text-xs text-base-content">
-							{selectedApt.name}
-							{building ? ` (${building})` : ""}
-						</div>
-						<div className="text-[11px] text-base-content/60">
-							Fixed delivery price
-						</div>
+					<div className="text-lg font-black text-primary font-mono">
+						฿{selectedApt.fee}
 					</div>
 				</div>
-				<div className="text-lg font-black text-primary font-mono">
-					฿{selectedApt.fee}
+			) : (
+				<div className="bg-base-100/60 rounded-2xl p-4 border border-dashed border-base-300 text-center text-xs text-base-content/50">
+					Select your apartment or hotel above to view delivery details
 				</div>
-			</div>
+			)}
 
 			{/* 4. Continue Button */}
 			<div className="pt-2">
 				<button
 					type="button"
-					className="btn btn-primary w-full shadow-xl font-extrabold text-primary-content gap-2 rounded-2xl py-4 h-auto text-base"
+					disabled={!selectedApt || (selectedApt.buildings?.length > 0 && !building)}
+					className="btn btn-primary w-full shadow-xl font-extrabold text-primary-content gap-2 rounded-2xl py-4 h-auto text-base disabled:opacity-40 disabled:cursor-not-allowed"
 					onClick={handleConfirm}>
 					<span>Continue to Menu</span>
 					<ArrowRight className="w-5 h-5" />

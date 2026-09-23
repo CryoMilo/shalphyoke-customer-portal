@@ -22,6 +22,7 @@ import { customerAPI } from "../../api/customers";
 import { orderAPI } from "../../api/orders";
 import { PAYMENT_CONFIG } from "../../utils/paymentConfig";
 import { formatDeliveryAddress, formatBuildingInfo } from "../../utils/deliveryLocations";
+import OrderStepper from "../Shared/OrderStepper";
 import toast from "react-hot-toast";
 
 const DetailInfoSection = () => {
@@ -252,6 +253,11 @@ const DetailInfoSection = () => {
 					Checkout &amp; Payment
 				</h2>
 				<div className="w-8"></div>
+			</div>
+
+			{/* Stepped Progress Line */}
+			<div className="bg-base-100 border border-base-200 rounded-2xl p-3 shadow-sm">
+				<OrderStepper currentStep={3} />
 			</div>
 
 			{/* 1. Chosen Location Card */}

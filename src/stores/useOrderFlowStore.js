@@ -1,19 +1,19 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { FIXED_APARTMENTS } from "../utils/deliveryLocations";
 
 export const useOrderFlowStore = create(
 	persist(
 		(set) => ({
 			// Steps: 'location' | 'menu' | 'checkout' | 'waiting'
-			step: "location",
+			// Defaults to 'menu'. If location is not confirmed, QROrder renders LocationPromptPage.
+			step: "menu",
 
-			// Location chosen in Step 1
+			// Location chosen in Step 1 (no default location chosen by system)
 			selectedLocation: {
-				apartmentId: FIXED_APARTMENTS[0].id,
-				apartmentName: FIXED_APARTMENTS[0].name,
-				building: FIXED_APARTMENTS[0].buildings[0] || "",
-				fee: FIXED_APARTMENTS[0].fee,
+				apartmentId: null,
+				apartmentName: null,
+				building: "",
+				fee: 0,
 				isConfirmed: false,
 			},
 
