@@ -6,7 +6,9 @@ import { useCart } from "../context/CartContext";
 import MenuGrid from "../components/Menu/MenuGrid";
 import CartDrawer from "../components/Cart/CartDrawer";
 import LocationPromptPage from "../components/Location/LocationPromptPage";
-import DetailInfoSection from "../components/Checkout/DetailInfoSection";
+import ContactDetailsSection from "../components/Checkout/ContactDetailsSection";
+import StockCheckSection from "../components/Checkout/StockCheckSection";
+import PaymentSection from "../components/Checkout/PaymentSection";
 import WaitingForApproval from "../components/Checkout/WaitingForApproval";
 import OrderStepper from "../components/Shared/OrderStepper";
 import { ShoppingBag, ArrowRight } from "lucide-react";
@@ -60,12 +62,22 @@ const QROrder = () => {
 		return <LocationPromptPage />;
 	}
 
-	// Step 3: Detail Info & Payment Section
-	if (step === "checkout") {
-		return <DetailInfoSection />;
+	// Step 3 (Phase 1): Contact & Details Info
+	if (step === "contact" || step === "checkout") {
+		return <ContactDetailsSection />;
 	}
 
-	// Step 4: Waiting for Admin Order Approval UI
+	// Step 3 (Phase 1 Stall): Kitchen Stock Availability Check
+	if (step === "stock_check") {
+		return <StockCheckSection />;
+	}
+
+	// Step 4 (Phase 2): Payment & Slip Upload
+	if (step === "payment") {
+		return <PaymentSection />;
+	}
+
+	// Final Step: Waiting for Admin Order Approval UI
 	if (step === "waiting") {
 		return <WaitingForApproval />;
 	}
@@ -96,7 +108,7 @@ const QROrder = () => {
 								);
 								return;
 							}
-							setStep("checkout");
+							setStep("contact");
 						}}>
 						<span className="flex items-center gap-2 text-sm font-extrabold">
 							<ShoppingBag className="w-5 h-5" />

@@ -27,7 +27,7 @@ const CartDrawer = ({ isOpen, onClose, cart, total }) => {
 			return;
 		}
 		onClose();
-		setStep("checkout");
+		setStep("contact");
 	};
 
 	const handleEditConfirm = ({ note, extraPrice, quantity }) => {

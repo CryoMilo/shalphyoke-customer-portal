@@ -33,7 +33,10 @@ export const useOrderFlowStore = create(
 				slipUrl: null,
 			},
 
-			// Active order when created
+			// Active order request (Phase 1 & 2 staging)
+			activeOrderRequest: null,
+
+			// Active order when created (Final POS order)
 			currentOrder: null,
 
 			// Actions
@@ -64,6 +67,16 @@ export const useOrderFlowStore = create(
 					},
 				})),
 
+			setActiveOrderRequest: (orderRequest) =>
+				set({ activeOrderRequest: orderRequest }),
+
+			updateActiveOrderRequest: (updates) =>
+				set((state) => ({
+					activeOrderRequest: state.activeOrderRequest
+						? { ...state.activeOrderRequest, ...updates }
+						: null,
+				})),
+
 			setCurrentOrder: (order) => set({ currentOrder: order }),
 
 			resetOrderFlow: () =>
@@ -75,6 +88,7 @@ export const useOrderFlowStore = create(
 						slipPreviewUrl: null,
 						slipUrl: null,
 					},
+					activeOrderRequest: null,
 					currentOrder: null,
 				})),
 		}),
@@ -83,6 +97,7 @@ export const useOrderFlowStore = create(
 			partialize: (state) => ({
 				selectedLocation: state.selectedLocation,
 				customerInfo: state.customerInfo,
+				activeOrderRequest: state.activeOrderRequest,
 			}),
 		}
 	)

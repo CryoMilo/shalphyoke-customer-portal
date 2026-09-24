@@ -2,10 +2,10 @@ import { useState, useEffect } from "react";
 import {
 	Clock,
 	CookingPot,
-	MapPin,
 	Building,
 	Phone,
 	User,
+	MessageSquare,
 	MessageCircle,
 	AlertTriangle,
 	ExternalLink,
@@ -16,17 +16,79 @@ import {
 } from "lucide-react";
 import { useOrderFlowStore } from "../../stores/useOrderFlowStore";
 import { orderAPI } from "../../api/orders";
+import { orderRequestAPI } from "../../api/orderRequests";
 import OrderStepper from "../Shared/OrderStepper";
 import toast from "react-hot-toast";
 
 const WaitingForApproval = ({ orderIdProp }) => {
-	const { currentOrder, setCurrentOrder, resetOrderFlow } = useOrderFlowStore();
+	const {
+		currentOrder,
+		setCurrentOrder,
+		activeOrderRequest,
+		updateActiveOrderRequest,
+		resetOrderFlow,
+	} = useOrderFlowStore();
 
-	const [order, setOrder] = useState(currentOrder);
-	const [isLoading, setIsLoading] = useState(!currentOrder && Boolean(orderIdProp));
+	const [order, setOrder] = useState(
+		currentOrder ||
+			(activeOrderRequest
+				? {
+						order_number: activeOrderRequest.request_number,
+						pos_order_status:
+							activeOrderRequest.status === "paid_pending_approval"
+								? "pending"
+								: activeOrderRequest.status,
+						customer_name: activeOrderRequest.customer_name,
+						customer_phone: activeOrderRequest.customer_phone,
+						delivery_address: activeOrderRequest.delivery_address,
+						payment_method: activeOrderRequest.payment_type === "cod" ? "cash" : "qr",
+						payment_slip_url: activeOrderRequest.payment_slip_url,
+						order_items: activeOrderRequest.items,
+						item_notes: activeOrderRequest.item_notes,
+						item_extra_prices: activeOrderRequest.item_extra_prices,
+						subtotal: activeOrderRequest.subtotal,
+						delivery_fee: activeOrderRequest.delivery_fee,
+						total_amount: activeOrderRequest.total_amount,
+						notes: activeOrderRequest.notes,
+				  }
+				: null)
+	);
+
+	const [isLoading, setIsLoading] = useState(!order && Boolean(orderIdProp));
 
 	const targetOrderId = currentOrder?.id || orderIdProp;
 
+	// Listen to activeOrderRequest if waiting for POS admin to convert to real order
+	useEffect(() => {
+		if (!activeOrderRequest?.id || currentOrder) return;
+
+		const sub = orderRequestAPI.subscribeToOrderRequest(
+			activeOrderRequest.id,
+			async (updated) => {
+				updateActiveOrderRequest(updated);
+
+				if (updated.final_order_id) {
+					try {
+						const realOrder = await orderAPI.getStatus(updated.final_order_id);
+						setOrder(realOrder);
+						setCurrentOrder(realOrder);
+						toast.success("🍳 Order Approved by Admin! Kitchen is cooking.");
+					} catch (e) {
+						console.error("Error fetching real order:", e);
+					}
+				} else if (updated.status === "cancelled") {
+					setOrder((prev) => ({ ...prev, pos_order_status: "cancelled" }));
+					toast.error("⚠️ Order was disapproved by staff.");
+				}
+			}
+		);
+
+		return () => {
+			sub?.unsubscribe?.();
+		};
+	}, [activeOrderRequest?.id, currentOrder, setCurrentOrder, updateActiveOrderRequest]);
+
+	// Listen to real order if targetOrderId is set
 	useEffect(() => {
 		let isMounted = true;
 
@@ -49,7 +111,6 @@ const WaitingForApproval = ({ orderIdProp }) => {
 			fetchOrderDetails();
 		}
 
-		// Subscribe to live Postgres changes
 		if (targetOrderId) {
 			const subscription = orderAPI.subscribe(targetOrderId, (updatedOrder) => {
 				if (isMounted) {
@@ -73,9 +134,7 @@ const WaitingForApproval = ({ orderIdProp }) => {
 
 			return () => {
 				isMounted = false;
-				if (subscription && typeof subscription.unsubscribe === "function") {
-					subscription.unsubscribe();
-				}
+				subscription?.unsubscribe?.();
 			};
 		}
 	}, [targetOrderId, currentOrder, setCurrentOrder]);
@@ -118,6 +177,10 @@ const WaitingForApproval = ({ orderIdProp }) => {
 
 	const shopPhone = import.meta.env.VITE_SHOP_PHONE || "0812345678";
 	const lineUrl = import.meta.env.VITE_LINE_URL || "https://line.me";
+	const fbPageName = import.meta.env.VITE_FB_PAGE_NAME || "shalphyokemm";
+	const messengerUrl = `https://m.me/${fbPageName}?text=${encodeURIComponent(
+		`Hi Shal Phyoke! I have placed order #${order.order_number}`
+	)}`;
 
 	return (
 		<div className="max-w-md mx-auto space-y-4 pb-16 animate-fadeIn">
@@ -159,8 +222,7 @@ const WaitingForApproval = ({ orderIdProp }) => {
 								Waiting for Order Approval from Admin
 							</h3>
 							<p className="text-xs text-base-content/70 mt-1.5 leading-relaxed">
-								Your order has been submitted. Our team is verifying your items and payment details.
-								The kitchen will begin cooking once approved.
+								Your payment &amp; order have been submitted. Our team is verifying your payment slip. The kitchen will begin cooking once approved.
 							</p>
 						</div>
 
@@ -200,7 +262,7 @@ const WaitingForApproval = ({ orderIdProp }) => {
 									Order Disapproved / Item Out of Stock
 								</h3>
 								<p className="text-xs text-base-content/80 mt-1">
-									Some items may be out of stock or need adjustment. Please contact us via LINE or call the shop to swap items or request a refund.
+									Some items may be out of stock or need adjustment. Please contact us via Messenger or call the shop.
 								</p>
 							</div>
 						</div>
@@ -220,7 +282,7 @@ const WaitingForApproval = ({ orderIdProp }) => {
 			<div className="card bg-base-100 shadow-sm border border-base-200 rounded-2xl">
 				<div className="card-body p-4 space-y-2.5">
 					<span className="text-xs font-bold uppercase tracking-wider text-base-content/60 flex items-center gap-1.5">
-						<MapPin className="w-3.5 h-3.5 text-primary" />
+						<Building className="w-3.5 h-3.5 text-primary" />
 						Delivery Information
 					</span>
 
@@ -361,22 +423,36 @@ const WaitingForApproval = ({ orderIdProp }) => {
 				</div>
 			</div>
 
-			{/* Direct Contact Buttons */}
-			<div className="pt-2 flex gap-2">
+			{/* ============================================================ */}
+			{/* 5. DIRECT MESSENGER & CALL BUTTONS */}
+			{/* ============================================================ */}
+			<div className="pt-1 space-y-2">
 				<a
-					href={lineUrl}
+					href={messengerUrl}
 					target="_blank"
 					rel="noopener noreferrer"
-					className="btn btn-sm btn-outline btn-success flex-1 gap-1.5 rounded-xl">
-					<MessageCircle className="w-4 h-4" />
-					Chat on LINE
+					className="btn btn-sm btn-primary w-full gap-2 rounded-xl font-bold shadow-md">
+					<MessageSquare className="w-4 h-4" />
+					<span>Notify Shop on Facebook Messenger</span>
+					<ExternalLink className="w-3.5 h-3.5" />
 				</a>
-				<a
-					href={`tel:${shopPhone}`}
-					className="btn btn-sm btn-outline btn-neutral flex-1 gap-1.5 rounded-xl">
-					<Phone className="w-4 h-4" />
-					Call Shop
-				</a>
+
+				<div className="flex gap-2">
+					<a
+						href={lineUrl}
+						target="_blank"
+						rel="noopener noreferrer"
+						className="btn btn-sm btn-outline btn-success flex-1 gap-1.5 rounded-xl">
+						<MessageCircle className="w-4 h-4" />
+						Chat on LINE
+					</a>
+					<a
+						href={`tel:${shopPhone}`}
+						className="btn btn-sm btn-outline btn-neutral flex-1 gap-1.5 rounded-xl">
+						<Phone className="w-4 h-4" />
+						Call Shop
+					</a>
+				</div>
 			</div>
 		</div>
 	);
