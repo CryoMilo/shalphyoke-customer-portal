@@ -19,6 +19,7 @@ import { useCartStore } from "../../stores/useCartStore";
 import { orderRequestAPI } from "../../api/orderRequests";
 import { notifyPaymentSubmitted } from "../../api/telegram";
 import { PAYMENT_CONFIG } from "../../utils/paymentConfig";
+import { compressPaymentSlip, formatFileSize } from "../../utils/imageCompressor";
 import OrderStepper from "../Shared/OrderStepper";
 import toast from "react-hot-toast";
 
@@ -34,6 +35,8 @@ const PaymentSection = () => {
 	const [paymentType, setPaymentType] = useState("promptpay"); // 'promptpay' | 'truemoney' | 'cod'
 	const [slipFile, setSlipFile] = useState(null);
 	const [slipPreviewUrl, setSlipPreviewUrl] = useState(null);
+	const [fileSizeInfo, setFileSizeInfo] = useState(null);
+	const [isCompressing, setIsCompressing] = useState(false);
 	const [copied, setCopied] = useState(false);
 	const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -67,16 +70,35 @@ const PaymentSection = () => {
 		setTimeout(() => setCopied(false), 2000);
 	};
 
-	// Handle slip file upload
-	const handleSlipSelect = (e) => {
+	// Handle slip file upload with instant compression
+	const handleSlipSelect = async (e) => {
 		const file = e.target.files?.[0];
-		if (file) {
-			if (!file.type.startsWith("image/")) {
-				toast.error("Please upload an image file (JPG, PNG, WebP)");
-				return;
-			}
+		if (!file) return;
+
+		if (!file.type.startsWith("image/")) {
+			toast.error("Please upload an image file (JPG, PNG, WebP)");
+			return;
+		}
+
+		setIsCompressing(true);
+		try {
+			const compressed = await compressPaymentSlip(file);
+			setSlipFile(compressed);
+			setSlipPreviewUrl(URL.createObjectURL(compressed));
+			setFileSizeInfo({
+				original: formatFileSize(file.size),
+				compressed: formatFileSize(compressed.size),
+			});
+		} catch (err) {
+			console.error("Compression error, falling back to original:", err);
 			setSlipFile(file);
 			setSlipPreviewUrl(URL.createObjectURL(file));
+			setFileSizeInfo({
+				original: formatFileSize(file.size),
+				compressed: formatFileSize(file.size),
+			});
+		} finally {
+			setIsCompressing(false);
 		}
 	};
 
@@ -289,21 +311,40 @@ const PaymentSection = () => {
 									Attach Transfer Slip *
 								</label>
 
-								{slipPreviewUrl ? (
-									<div className="relative rounded-xl overflow-hidden border-2 border-primary/30 bg-base-100 p-2 flex items-center gap-3">
+								{isCompressing ? (
+									<div className="flex flex-col items-center justify-center p-5 border-2 border-primary/30 rounded-xl bg-primary/5 text-center space-y-2">
+										<span className="loading loading-spinner loading-md text-primary"></span>
+										<div className="space-y-0.5">
+											<span className="text-xs font-bold text-base-content block">
+												Optimizing transfer slip...
+											</span>
+											<span className="text-[11px] text-base-content/60 block">
+												Compressing image for instant upload & verification
+											</span>
+										</div>
+									</div>
+								) : slipPreviewUrl ? (
+									<div className="relative rounded-xl overflow-hidden border-2 border-primary/30 bg-base-100 p-2.5 flex items-center gap-3">
 										<img
 											src={slipPreviewUrl}
 											alt="Slip Preview"
-											className="w-16 h-16 object-cover rounded-lg"
+											className="w-16 h-16 object-cover rounded-lg border border-base-200 shrink-0"
 										/>
 										<div className="flex-1 min-w-0">
-											<span className="text-xs font-bold text-success flex items-center gap-1">
-												<CheckCircle2 className="w-3.5 h-3.5" /> Slip Attached
-											</span>
-											<p className="text-[11px] text-base-content/50 truncate">
+											<div className="flex items-center gap-1.5 flex-wrap">
+												<span className="text-xs font-bold text-success flex items-center gap-1">
+													<CheckCircle2 className="w-3.5 h-3.5" /> Slip Attached
+												</span>
+												{fileSizeInfo && (
+													<span className="badge badge-success badge-outline badge-xs text-[10px] font-mono font-semibold py-1">
+														{fileSizeInfo.original} → {fileSizeInfo.compressed} ⚡
+													</span>
+												)}
+											</div>
+											<p className="text-[11px] text-base-content/50 truncate mt-0.5">
 												{slipFile?.name}
 											</p>
-											<label className="text-[11px] text-primary font-semibold hover:underline cursor-pointer">
+											<label className="text-[11px] text-primary font-semibold hover:underline cursor-pointer inline-block mt-0.5">
 												Change Slip
 												<input
 													type="file"
@@ -406,12 +447,17 @@ const PaymentSection = () => {
 
 					<button
 						className="btn btn-primary w-full shadow-lg font-bold text-primary-content rounded-xl mt-2"
-						disabled={isSubmitting || (paymentType !== "cod" && !slipFile)}
+						disabled={isSubmitting || isCompressing || (paymentType !== "cod" && !slipFile)}
 						onClick={handleSubmitPayment}>
 						{isSubmitting ? (
 							<div className="flex items-center gap-2">
 								<span className="loading loading-spinner loading-xs"></span>
 								<span>Confirming Payment...</span>
+							</div>
+						) : isCompressing ? (
+							<div className="flex items-center gap-2">
+								<span className="loading loading-spinner loading-xs"></span>
+								<span>Optimizing Slip...</span>
 							</div>
 						) : (
 							`Confirm Payment & Order • ฿${grandTotal.toFixed(2)}`

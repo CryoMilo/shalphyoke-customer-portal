@@ -1,5 +1,6 @@
 import { supabase } from "./supabase";
 import { customerAPI } from "./customers";
+import { compressPaymentSlip } from "../utils/imageCompressor";
 
 export const orderRequestAPI = {
 	/**
@@ -125,13 +126,16 @@ export const orderRequestAPI = {
 	uploadPaymentSlip: async (requestIdOrTemp, file) => {
 		if (!file) throw new Error("No file provided");
 
-		const fileExt = file.name.split(".").pop();
+		// Automatically compress file on client to ~100-150KB
+		const readyFile = await compressPaymentSlip(file);
+
+		const fileExt = (readyFile.name || file.name).split(".").pop();
 		const cleanFileName = `${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${fileExt}`;
 		const filePath = `${requestIdOrTemp}/${cleanFileName}`;
 
 		const { error: uploadError } = await supabase.storage
 			.from("payment-slips")
-			.upload(filePath, file, {
+			.upload(filePath, readyFile, {
 				cacheControl: "3600",
 				upsert: true,
 			});
