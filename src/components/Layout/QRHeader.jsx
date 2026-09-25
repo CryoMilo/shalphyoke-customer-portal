@@ -6,7 +6,7 @@ import { ShoppingBag, MapPin, Globe } from "lucide-react";
 import logo from "../../../src/assets/logo.png";
 import { LANGUAGES } from "../../utils/constants";
 
-const QRHeader = ({ onCartClick, onLocationClick }) => {
+const QRHeader = ({ onCartClick, onLocationClick, isLocked = false }) => {
 	const { cart } = useCartStore();
 	const { currentLang, setLanguage } = useLanguageStore();
 	const { selectedLocation } = useOrderFlowStore();
@@ -37,7 +37,11 @@ const QRHeader = ({ onCartClick, onLocationClick }) => {
 						<button
 							type="button"
 							onClick={onLocationClick}
-							className="mt-1 flex items-center gap-1 text-[11px] font-bold text-primary hover:underline transition-all">
+							className={`mt-1 flex items-center gap-1 text-[11px] font-bold ${
+								isLocked
+									? "text-base-content/40 cursor-not-allowed"
+									: "text-primary hover:underline cursor-pointer"
+							} transition-all`}>
 							<MapPin className="w-3 h-3 shrink-0" />
 							<span className="truncate max-w-[130px] sm:max-w-[200px]">
 								{locationLabel}
@@ -74,12 +78,19 @@ const QRHeader = ({ onCartClick, onLocationClick }) => {
 
 					{/* Cart Button */}
 					<button
-						className="btn btn-sm btn-primary btn-circle relative shadow-md"
+						className={`btn btn-sm btn-circle relative shadow-md transition-all ${
+							isLocked
+								? "opacity-50 cursor-not-allowed bg-base-300 text-base-content/50 border-base-300 hover:bg-base-300"
+								: "btn-primary text-primary-content"
+						}`}
 						onClick={onCartClick}
-						aria-label="Open cart">
-						<ShoppingBag className="w-4 h-4 text-primary-content" />
+						aria-label={isLocked ? "Cart locked during stock check" : "Open cart"}>
+						<ShoppingBag className="w-4 h-4" />
 						{cartCount > 0 && (
-							<span className="badge badge-accent badge-xs absolute -top-1.5 -right-1.5 text-[10px] font-bold px-1.5 py-2">
+							<span
+								className={`badge badge-xs absolute -top-1.5 -right-1.5 text-[10px] font-bold px-1.5 py-2 ${
+									isLocked ? "badge-ghost opacity-70" : "badge-accent"
+								}`}>
 								{cartCount}
 							</span>
 						)}

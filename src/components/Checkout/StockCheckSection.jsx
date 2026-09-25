@@ -3,15 +3,18 @@ import {
 	Clock,
 	CheckCircle2,
 	AlertCircle,
+	AlertTriangle,
 	MessageSquare,
 	Phone,
 	ArrowLeft,
 	ShoppingBag,
 	RotateCcw,
 	ExternalLink,
+	XCircle,
 } from "lucide-react";
 import { useOrderFlowStore } from "../../stores/useOrderFlowStore";
 import { orderRequestAPI } from "../../api/orderRequests";
+import { notifyStockCheckCancelled } from "../../api/telegram";
 import OrderStepper from "../Shared/OrderStepper";
 import toast from "react-hot-toast";
 
@@ -32,6 +35,8 @@ const StockCheckSection = () => {
 	const [changeReason, setChangeReason] = useState(
 		activeOrderRequest?.stock_rejection_reason || ""
 	);
+	const [isCancelling, setIsCancelling] = useState(false);
+	const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
 	const shopPhone = import.meta.env.VITE_SHOP_PHONE || "0812345678";
 	const fbPageName = import.meta.env.VITE_FB_PAGE_NAME || "shalphyokemm";
@@ -40,6 +45,56 @@ const StockCheckSection = () => {
 			activeOrderRequest?.request_number || ""
 		}`
 	)}`;
+
+	// Prevent accidental browser back navigation during stock check
+	useEffect(() => {
+		if (stockStatus !== "pending_check") return;
+
+		window.history.pushState({ stockCheck: true }, "");
+
+		const handlePopState = () => {
+			if (stockStatus === "pending_check") {
+				window.history.pushState({ stockCheck: true }, "");
+				toast("Kitchen is checking item stock. Please wait or tap 'Cancel Order Request'.", {
+					icon: "⏳",
+				});
+			}
+		};
+
+		window.addEventListener("popstate", handlePopState);
+		return () => {
+			window.removeEventListener("popstate", handlePopState);
+		};
+	}, [stockStatus]);
+
+	// Cancel Order Request Handler
+	const handleCancelRequest = async () => {
+		if (!activeOrderRequest?.id || isCancelling) return;
+		setIsCancelling(true);
+		const toastId = toast.loading("Cancelling order request...");
+
+		try {
+			await orderRequestAPI.cancelOrderRequest(
+				activeOrderRequest.id,
+				"Cancelled by customer while waiting for stock check"
+			);
+
+			// Notify staff on Telegram in background
+			notifyStockCheckCancelled(
+				activeOrderRequest,
+				"Customer cancelled from stock check screen"
+			).catch((err) => console.error("Telegram cancel notify error:", err));
+
+			toast.success("Order request cancelled. Your cart is preserved.", { id: toastId });
+			resetOrderFlow();
+		} catch (err) {
+			console.error("Cancel order request error:", err);
+			toast.error("Failed to cancel request. Please try again.", { id: toastId });
+		} finally {
+			setIsCancelling(false);
+			setShowCancelConfirm(false);
+		}
+	};
 
 	// Countdown Timer (120s down to 0)
 	useEffect(() => {
@@ -129,12 +184,19 @@ const StockCheckSection = () => {
 						#{activeOrderRequest.request_number}
 					</h2>
 				</div>
-				<button
-					className="btn btn-xs btn-ghost gap-1 text-base-content/60"
-					onClick={() => resetOrderFlow()}>
-					<RotateCcw className="w-3.5 h-3.5" />
-					New Order
-				</button>
+				{stockStatus === "pending_check" ? (
+					<div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-warning/15 text-warning border border-warning/30 text-[11px] font-bold">
+						<span className="loading loading-spinner loading-xs text-warning"></span>
+						<span>Checking Stock</span>
+					</div>
+				) : (
+					<button
+						className="btn btn-xs btn-ghost gap-1 text-base-content/60"
+						onClick={() => resetOrderFlow()}>
+						<RotateCcw className="w-3.5 h-3.5" />
+						New Order
+					</button>
+				)}
 			</div>
 
 			{/* Stepped Progress Line */}
@@ -192,7 +254,10 @@ const StockCheckSection = () => {
 							<button
 								type="button"
 								className="btn btn-primary btn-sm w-full font-bold rounded-xl"
-								onClick={() => setStep("menu")}>
+								onClick={() => {
+									resetOrderFlow();
+									setStep("menu");
+								}}>
 								<ArrowLeft className="w-4 h-4 mr-1" />
 								Return to Menu &amp; Swap Items
 							</button>
@@ -281,6 +346,18 @@ const StockCheckSection = () => {
 								</div>
 							</div>
 						)}
+
+						{/* Cancel Order Request Action */}
+						<div className="pt-2 border-t border-base-200">
+							<button
+								type="button"
+								disabled={isCancelling}
+								onClick={() => setShowCancelConfirm(true)}
+								className="btn btn-ghost btn-sm text-error/80 hover:text-error hover:bg-error/10 w-full rounded-xl text-xs font-bold gap-1.5 transition-colors">
+								<XCircle className="w-4 h-4" />
+								Cancel Order Request
+							</button>
+						</div>
 					</div>
 				</div>
 			)}
@@ -333,6 +410,55 @@ const StockCheckSection = () => {
 					</div>
 				</div>
 			</div>
+
+			{/* Cancel Request Confirmation Modal */}
+			{showCancelConfirm && (
+				<div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn">
+					<div className="bg-base-100 rounded-2xl max-w-sm w-full p-5 shadow-2xl border border-base-200 space-y-4 animate-scaleUp">
+						<div className="flex items-start gap-3">
+							<div className="w-10 h-10 rounded-xl bg-error/15 text-error flex items-center justify-center shrink-0 mt-0.5">
+								<AlertTriangle className="w-5 h-5" />
+							</div>
+							<div className="min-w-0 flex-1">
+								<h3 className="font-extrabold text-sm text-base-content">
+									Cancel this Order Request?
+								</h3>
+								<p className="text-xs text-base-content/60 font-mono mt-0.5">
+									#{activeOrderRequest.request_number}
+								</p>
+							</div>
+						</div>
+
+						<p className="text-xs text-base-content/70 leading-relaxed">
+							This will notify the kitchen to stop checking stock. Your selected items will remain in your cart so you can modify your order.
+						</p>
+
+						<div className="flex gap-2 pt-2 border-t border-base-200">
+							<button
+								type="button"
+								disabled={isCancelling}
+								className="btn btn-ghost btn-sm flex-1 rounded-xl text-xs font-bold"
+								onClick={() => setShowCancelConfirm(false)}>
+								Keep Waiting
+							</button>
+							<button
+								type="button"
+								disabled={isCancelling}
+								className="btn btn-error btn-sm flex-1 rounded-xl text-xs font-bold text-white shadow-md"
+								onClick={handleCancelRequest}>
+								{isCancelling ? (
+									<div className="flex items-center gap-1.5">
+										<span className="loading loading-spinner loading-xs"></span>
+										<span>Cancelling...</span>
+									</div>
+								) : (
+									"Yes, Cancel"
+								)}
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
 		</div>
 	);
 };

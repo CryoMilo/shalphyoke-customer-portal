@@ -40,7 +40,18 @@ export const useOrderFlowStore = create(
 			currentOrder: null,
 
 			// Actions
-			setStep: (step) => set({ step }),
+			setStep: (step) =>
+				set((state) => {
+					// Guard: Lock navigation to stock_check if currently waiting for kitchen stock confirmation
+					if (
+						state.activeOrderRequest?.status === "stock_checking" &&
+						state.activeOrderRequest?.stock_status === "pending_check" &&
+						step !== "stock_check"
+					) {
+						return state;
+					}
+					return { step };
+				}),
 
 			setLocation: (locationUpdate) =>
 				set((state) => ({
@@ -77,6 +88,12 @@ export const useOrderFlowStore = create(
 						: null,
 				})),
 
+			cancelActiveOrderRequest: () =>
+				set({
+					activeOrderRequest: null,
+					step: "menu",
+				}),
+
 			setCurrentOrder: (order) => set({ currentOrder: order }),
 
 			resetOrderFlow: () =>
@@ -95,6 +112,7 @@ export const useOrderFlowStore = create(
 		{
 			name: "shalphyoke_order_flow",
 			partialize: (state) => ({
+				step: state.step,
 				selectedLocation: state.selectedLocation,
 				customerInfo: state.customerInfo,
 				activeOrderRequest: state.activeOrderRequest,

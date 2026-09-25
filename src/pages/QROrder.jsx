@@ -18,7 +18,7 @@ import { getItemTimeAvailability } from "../utils/menuAvailability";
 
 const QROrder = () => {
 	const { isCartOpen, closeCart } = useCart();
-	const { step, setStep, selectedLocation } = useOrderFlowStore();
+	const { step, setStep, selectedLocation, activeOrderRequest } = useOrderFlowStore();
 
 	const { menuItems, specials, fetchMenu, isLoading: menuLoading } = useMenuStore();
 	const { cart } = useCartStore();
@@ -55,6 +55,15 @@ const QROrder = () => {
 				</div>
 			</div>
 		);
+	}
+
+	// 🔒 CRITICAL GUARD: If customer has an active order request currently being checked by kitchen,
+	// lock customer to StockCheckSection so they cannot place simultaneous duplicate requests.
+	if (
+		activeOrderRequest?.status === "stock_checking" &&
+		activeOrderRequest?.stock_status === "pending_check"
+	) {
+		return <StockCheckSection />;
 	}
 
 	// Step 1: Location Choice Page (if location not confirmed or user navigating to location)

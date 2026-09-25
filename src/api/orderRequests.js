@@ -107,6 +107,17 @@ export const orderRequestAPI = {
 	},
 
 	/**
+	 * Cancel an active order request
+	 */
+	cancelOrderRequest: async (requestId, reason = "Cancelled by customer") => {
+		return orderRequestAPI.updateOrderRequest(requestId, {
+			status: "cancelled",
+			stock_status: "rejected",
+			stock_rejection_reason: reason,
+		});
+	},
+
+	/**
 	 * Submit payment for order request (Phase 2)
 	 */
 	submitPayment: async (requestId, { paymentType, paymentSlipUrl }) => {

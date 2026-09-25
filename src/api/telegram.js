@@ -91,54 +91,77 @@ export const sendTelegramPhoto = async (photoUrl, captionHtml) => {
 
 /**
  * Event 1: Notify Staff that kitchen stock check is urgently needed (Phase 1)
+ * GenZ Chill Young Guy Persona in Burmese prioritizing items to check first
  */
 export const notifyStockCheckRequired = async (orderRequest) => {
 	const uncertainItems = (orderRequest.items || []).filter(
 		(item) => item.requires_stock_check === true
 	);
 
-	const itemsList = uncertainItems
+	// Top priority: Items to verify first
+	const itemsToCheckList = (uncertainItems.length > 0 ? uncertainItems : orderRequest.items || [])
 		.map(
 			(i) =>
-				`• <b>${i.quantity || 1}x ${i.name_english || i.name_burmese}</b>${
+				`👉 <b>${i.quantity || 1}x ${i.name_english || i.name_burmese}</b>${
 					i.notes ? ` <i>(${i.notes})</i>` : ""
 				}`
 		)
 		.join("\n");
 
+	// All items for context
 	const allItemsSummary = (orderRequest.items || [])
 		.map(
 			(i) =>
 				`• ${i.quantity || 1}x ${i.name_english || i.name_burmese}${
-					i.notes ? ` (${i.notes})` : ""
+					i.notes ? ` <i>(${i.notes})</i>` : ""
 				}`
 		)
 		.join("\n");
 
 	const message = `
-⚠️ <b>URGENT: KITCHEN STOCK CHECK REQUIRED</b> ⚠️
-<b>Request #:</b> <code>${orderRequest.request_number}</code>
-<b>Customer:</b> ${orderRequest.customer_name}
-<b>Phone:</b> <a href="tel:${orderRequest.customer_phone}">${orderRequest.customer_phone}</a>
-<b>Destination:</b> ${orderRequest.delivery_address}
+🚨 <b>BRO တို့ရေ... မီးဖိုချောင် အမြန် CHECK ပေးပါဦး!</b> ⚡
 
-<b>🚨 Items needing verification:</b>
-${itemsList || "• Daily limited dishes"}
+🔍 <b>ဒီပစ္စည်းတွေ အရင်စစ်ပေးနော် (Check First!):</b>
+${itemsToCheckList}
 
-<b>All Request Items:</b>
+━━━━━━━━━━━━━━━━━━━
+📋 <b>အော်ဒါ အသေးစိတ် (Order Details):</b>
+• <b>Request #:</b> <code>${orderRequest.request_number}</code>
+• <b>Customer:</b> ${orderRequest.customer_name}
+• <b>Phone:</b> <a href="tel:${orderRequest.customer_phone}">${orderRequest.customer_phone}</a>
+• <b>ပို့ရမယ့်နေရာ:</b> ${orderRequest.delivery_address || "Delivery"}
+• <b>စုစုပေါင်း:</b> ฿${Number(orderRequest.total_amount || 0).toFixed(2)}
+
+📦 <b>မှာထားသမျှ အကုန် (All Items):</b>
 ${allItemsSummary}
+━━━━━━━━━━━━━━━━━━━
 
-<b>Subtotal:</b> ฿${Number(orderRequest.subtotal || 0).toFixed(2)}
-<b>Total:</b> ฿${Number(orderRequest.total_amount || 0).toFixed(2)}
-
-⏳ <i>Customer is waiting on the 2-minute availability screen. Please check kitchen stock in POS!</i>
+⏳ <i>Customer က 2 မိနစ် screen မှာ စောင့်နေတာမို့ POS ကနေ အမြန်စစ်ပြီး Confirm/Change လုပ်ပေးလိုက်ပါဦး bro!</i>
 `.trim();
 
 	return sendTelegramMessage(message);
 };
 
 /**
- * Event 2: Notify Staff that payment has been submitted (Phase 2)
+ * Event 2: Notify Staff when customer cancels while waiting for stock check
+ */
+export const notifyStockCheckCancelled = async (orderRequest, reason) => {
+	const message = `
+🙅‍♂️ <b>ORDER CANCEL သွားပြီ BRO တို့ရေ!</b>
+
+Customer က stock စစ်တာစောင့်ရင်း cancel လုပ်လိုက်လို့ <code>#${orderRequest.request_number}</code> အတွက် ပစ္စည်းမစစ်တော့လဲ ရပါပြီနော်!
+
+• <b>Customer:</b> ${orderRequest.customer_name} (<a href="tel:${orderRequest.customer_phone}">${orderRequest.customer_phone}</a>)
+• <b>အကြောင်းပြချက်:</b> <i>${reason || "Customer cancelled while waiting"}</i>
+
+👌 <i>မီးဖိုချောင်မှာ ဆက်စစ်စရာ မလိုတော့ပါဘူး bro!</i>
+`.trim();
+
+	return sendTelegramMessage(message);
+};
+
+/**
+ * Event 3: Notify Staff that payment has been submitted (Phase 2)
  */
 export const notifyPaymentSubmitted = async (orderRequest) => {
 	const paymentLabel =
@@ -159,22 +182,23 @@ export const notifyPaymentSubmitted = async (orderRequest) => {
 		.join("\n");
 
 	const caption = `
-🎉 <b>NEW ORDER READY FOR APPROVAL!</b> 🎉
-<b>Request #:</b> <code>${orderRequest.request_number}</code>
-<b>Customer:</b> ${orderRequest.customer_name}
-<b>Phone:</b> <a href="tel:${orderRequest.customer_phone}">${orderRequest.customer_phone}</a>
-<b>Destination:</b> ${orderRequest.delivery_address}
-<b>Payment Method:</b> ${paymentLabel}
+🎉 <b>ငွေရှင်းပြီး အော်ဒါအသစ် ရောက်လာပြီ BRO တို့ရေ!</b> 💸
 
-<b>Order Items:</b>
+• <b>Request #:</b> <code>${orderRequest.request_number}</code>
+• <b>Customer:</b> ${orderRequest.customer_name}
+• <b>Phone:</b> <a href="tel:${orderRequest.customer_phone}">${orderRequest.customer_phone}</a>
+• <b>ပို့ရမယ့်နေရာ:</b> ${orderRequest.delivery_address || "Delivery"}
+• <b>Payment:</b> ${paymentLabel}
+
+🍱 <b>မှာယူထားသော ဟင်းများ:</b>
 ${itemsList}
 
-<b>Food Subtotal:</b> ฿${Number(orderRequest.subtotal || 0).toFixed(2)}
-<b>Delivery Fee:</b> ฿${Number(orderRequest.delivery_fee || 0).toFixed(2)}
-<b>Grand Total:</b> <b>฿${Number(orderRequest.total_amount || 0).toFixed(2)}</b>
-${orderRequest.notes ? `\n<b>Customer Note:</b> <i>${orderRequest.notes}</i>` : ""}
+💰 <b>အစားအသောက်:</b> ฿${Number(orderRequest.subtotal || 0).toFixed(2)}
+🛵 <b>ပို့ဆောင်ခ:</b> ฿${Number(orderRequest.delivery_fee || 0).toFixed(2)}
+💵 <b>ကျသင့်ငွေ စုစုပေါင်း:</b> <b>฿${Number(orderRequest.total_amount || 0).toFixed(2)}</b>
+${orderRequest.notes ? `\n📝 <b>Customer Note:</b> <i>${orderRequest.notes}</i>` : ""}
 
-✅ <i>Please check POS to Approve and print to Kitchen Printer!</i>
+⚡ <i>POS မှာ စလစ်စစ်ပြီး Approve လုပ်ကာ Kitchen Printer ထုတ်ပေးလိုက်တော့နော် bro!</i>
 `.trim();
 
 	if (orderRequest.payment_slip_url) {
