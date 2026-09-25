@@ -107,6 +107,52 @@ export const orderRequestAPI = {
 	},
 
 	/**
+	 * Resubmit / Update an existing order request when customer swaps or updates items
+	 * Keeps the same order request ID so Admin POS tracks a single card across the entire lifecycle
+	 */
+	resubmitOrderRequest: async (requestId, requestData) => {
+		const hasUncertainItems = Boolean(requestData.hasUncertainItems);
+		const stockStatus = hasUncertainItems ? "pending_check" : "stock_confirmed";
+		const status = hasUncertainItems ? "stock_checking" : "awaiting_payment";
+
+		const payload = {
+			customer_id: requestData.customerId || null,
+			customer_name: requestData.customerName,
+			customer_phone: requestData.customerPhone,
+			delivery_address: requestData.deliveryAddress,
+			clean_address: requestData.cleanAddress || null,
+			clean_building_info: requestData.cleanBuildingInfo || null,
+			items: requestData.items,
+			item_notes: requestData.itemNotes || {},
+			item_extra_prices: requestData.itemExtraPrices || {},
+			subtotal: requestData.subtotal,
+			delivery_fee: requestData.deliveryFee || 0,
+			total_amount: requestData.totalAmount,
+			notes: requestData.notes || null,
+			has_uncertain_items: hasUncertainItems,
+			stock_status: stockStatus,
+			status: status,
+			stock_rejection_reason: null, // Clear out-of-stock reason
+			updated_at: new Date().toISOString(),
+		};
+
+		const data = await orderRequestAPI.updateOrderRequest(requestId, payload);
+
+		// Also update customer normalized address if provided
+		const resolvedCustomerId = data?.customer_id || requestData.customerId;
+		if (resolvedCustomerId && (requestData.cleanAddress || requestData.cleanBuildingInfo)) {
+			customerAPI.updateCustomerAddressAndBuilding(
+				resolvedCustomerId,
+				requestData.cleanAddress,
+				requestData.cleanBuildingInfo,
+				requestData.customerPhone
+			);
+		}
+
+		return data;
+	},
+
+	/**
 	 * Cancel an active order request
 	 */
 	cancelOrderRequest: async (requestId, reason = "Cancelled by customer") => {
@@ -156,6 +202,21 @@ export const orderRequestAPI = {
 			throw uploadError;
 		}
 
+		// Try generating signed URL (valid for 7 days) so images can be viewed
+		// immediately even if the bucket is configured as private
+		try {
+			const { data: signedData, error: signError } = await supabase.storage
+				.from("payment-slips")
+				.createSignedUrl(filePath, 60 * 60 * 24 * 7);
+
+			if (!signError && signedData?.signedUrl) {
+				return signedData.signedUrl;
+			}
+		} catch (e) {
+			console.warn("Signed URL fallback warning:", e);
+		}
+
+		// Fallback to standard public URL
 		const {
 			data: { publicUrl },
 		} = supabase.storage.from("payment-slips").getPublicUrl(filePath);

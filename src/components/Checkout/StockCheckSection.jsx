@@ -255,22 +255,31 @@ const StockCheckSection = () => {
 								type="button"
 								className="btn btn-primary btn-sm w-full font-bold rounded-xl"
 								onClick={() => {
-									resetOrderFlow();
 									setStep("menu");
 								}}>
 								<ArrowLeft className="w-4 h-4 mr-1" />
 								Return to Menu &amp; Swap Items
 							</button>
 
-							<a
-								href={messengerUrl}
-								target="_blank"
-								rel="noopener noreferrer"
-								className="btn btn-outline btn-sm w-full font-bold rounded-xl gap-2">
-								<MessageSquare className="w-4 h-4 text-primary" />
-								Chat on Messenger
-								<ExternalLink className="w-3.5 h-3.5" />
-							</a>
+							<div className="flex gap-2">
+								<a
+									href={messengerUrl}
+									target="_blank"
+									rel="noopener noreferrer"
+									className="btn btn-outline btn-sm flex-1 font-bold rounded-xl gap-1.5 text-xs">
+									<MessageSquare className="w-4 h-4 text-primary" />
+									Chat Messenger
+									<ExternalLink className="w-3 h-3" />
+								</a>
+								<button
+									type="button"
+									disabled={isCancelling}
+									onClick={() => setShowCancelConfirm(true)}
+									className="btn btn-ghost btn-sm text-error/80 hover:text-error hover:bg-error/10 font-bold rounded-xl text-xs gap-1">
+									<XCircle className="w-3.5 h-3.5" />
+									Cancel
+								</button>
+							</div>
 						</div>
 					</div>
 				</div>

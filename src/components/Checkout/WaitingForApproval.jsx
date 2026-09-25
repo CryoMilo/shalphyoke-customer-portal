@@ -6,7 +6,6 @@ import {
 	Phone,
 	User,
 	MessageSquare,
-	MessageCircle,
 	AlertTriangle,
 	ExternalLink,
 	FileText,
@@ -176,7 +175,6 @@ const WaitingForApproval = ({ orderIdProp }) => {
 		order.pos_order_status === "completed";
 
 	const shopPhone = import.meta.env.VITE_SHOP_PHONE || "0812345678";
-	const lineUrl = import.meta.env.VITE_LINE_URL || "https://line.me";
 	const fbPageName = import.meta.env.VITE_FB_PAGE_NAME || "shalphyokemm";
 	const messengerUrl = `https://m.me/${fbPageName}?text=${encodeURIComponent(
 		`Hi Shal Phyoke! I have placed order #${order.order_number}`
@@ -336,17 +334,30 @@ const WaitingForApproval = ({ orderIdProp }) => {
 						</div>
 
 						{order.payment_slip_url && (
-							<div className="flex items-center justify-between pt-1 border-t border-base-300/40">
-								<span className="text-base-content/70 flex items-center gap-1">
-									<FileText className="w-3.5 h-3.5 text-success" />
-									Payment Slip:
-								</span>
+							<div className="pt-2 border-t border-base-300/40 space-y-2">
+								<div className="flex items-center justify-between text-xs">
+									<span className="text-base-content/70 flex items-center gap-1 font-semibold">
+										<FileText className="w-3.5 h-3.5 text-success" />
+										Payment Slip Attached:
+									</span>
+									<a
+										href={order.payment_slip_url}
+										target="_blank"
+										rel="noopener noreferrer"
+										className="text-primary font-bold underline flex items-center gap-1 text-[11px]">
+										Full View <ExternalLink className="w-3 h-3" />
+									</a>
+								</div>
 								<a
 									href={order.payment_slip_url}
 									target="_blank"
 									rel="noopener noreferrer"
-									className="text-primary font-semibold underline flex items-center gap-1">
-									View Slip <ExternalLink className="w-3 h-3" />
+									className="block relative rounded-xl overflow-hidden border border-base-300 bg-base-200/50 hover:opacity-95 transition-opacity max-w-xs mx-auto">
+									<img
+										src={order.payment_slip_url}
+										alt="Payment Transfer Slip"
+										className="w-full max-h-48 object-contain rounded-xl bg-black/5 p-1"
+									/>
 								</a>
 							</div>
 						)}
@@ -437,22 +448,12 @@ const WaitingForApproval = ({ orderIdProp }) => {
 					<ExternalLink className="w-3.5 h-3.5" />
 				</a>
 
-				<div className="flex gap-2">
-					<a
-						href={lineUrl}
-						target="_blank"
-						rel="noopener noreferrer"
-						className="btn btn-sm btn-outline btn-success flex-1 gap-1.5 rounded-xl">
-						<MessageCircle className="w-4 h-4" />
-						Chat on LINE
-					</a>
-					<a
-						href={`tel:${shopPhone}`}
-						className="btn btn-sm btn-outline btn-neutral flex-1 gap-1.5 rounded-xl">
-						<Phone className="w-4 h-4" />
-						Call Shop
-					</a>
-				</div>
+				<a
+					href={`tel:${shopPhone}`}
+					className="btn btn-sm btn-outline btn-neutral w-full gap-2 rounded-xl font-bold">
+					<Phone className="w-4 h-4" />
+					Call Shop ({shopPhone})
+				</a>
 			</div>
 		</div>
 	);

@@ -11,7 +11,7 @@ import StockCheckSection from "../components/Checkout/StockCheckSection";
 import PaymentSection from "../components/Checkout/PaymentSection";
 import WaitingForApproval from "../components/Checkout/WaitingForApproval";
 import OrderStepper from "../components/Shared/OrderStepper";
-import { ShoppingBag, ArrowRight } from "lucide-react";
+import { ShoppingBag, ArrowRight, AlertCircle } from "lucide-react";
 import toast from "react-hot-toast";
 import { getCartTotal, getCartItemCount } from "../utils/cartUtils";
 import { getItemTimeAvailability } from "../utils/menuAvailability";
@@ -98,6 +98,29 @@ const QROrder = () => {
 				<OrderStepper currentStep={2} />
 			</div>
 
+			{/* Change Requested Active Banner */}
+			{activeOrderRequest?.stock_status === "change_requested" && (
+				<div className="bg-warning/15 border-2 border-warning/40 rounded-2xl p-3.5 mb-4 shadow-sm flex items-start gap-3 animate-fadeIn">
+					<div className="w-8 h-8 rounded-xl bg-warning/20 text-warning flex items-center justify-center shrink-0 mt-0.5">
+						<AlertCircle className="w-5 h-5" />
+					</div>
+					<div className="flex-1 min-w-0">
+						<div className="flex items-center justify-between gap-2">
+							<span className="text-xs font-bold text-base-content">
+								Updating Order #{activeOrderRequest.request_number}
+							</span>
+							<span className="badge badge-warning badge-xs font-bold text-[10px]">
+								Change Requested
+							</span>
+						</div>
+						<p className="text-[11px] text-base-content/80 mt-0.5 leading-relaxed">
+							{activeOrderRequest.stock_rejection_reason ||
+								"Some items were out of stock. Please adjust your cart and review."}
+						</p>
+					</div>
+				</div>
+			)}
+
 			{/* Self-Order Kiosk Category Grid & Items */}
 			<MenuGrid items={menuItems} specials={specials} />
 
@@ -121,7 +144,11 @@ const QROrder = () => {
 						}}>
 						<span className="flex items-center gap-2 text-sm font-extrabold">
 							<ShoppingBag className="w-5 h-5" />
-							<span>Review &amp; Checkout</span>
+							<span>
+								{activeOrderRequest?.stock_status === "change_requested"
+									? "Update & Review Order"
+									: "Review & Checkout"}
+							</span>
 						</span>
 						<span className="badge badge-lg bg-base-100/20 text-white border-none font-extrabold px-3 flex items-center gap-1.5">
 							<span>{cartCount} items</span>

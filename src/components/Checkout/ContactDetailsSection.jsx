@@ -27,6 +27,7 @@ const ContactDetailsSection = () => {
 		customerInfo,
 		setCustomerInfo,
 		setStep,
+		activeOrderRequest,
 		setActiveOrderRequest,
 	} = useOrderFlowStore();
 
@@ -188,19 +189,34 @@ const ContactDetailsSection = () => {
 				hasUncertainItems: hasUncertainItems,
 			};
 
-			const createdRequest = await orderRequestAPI.createOrderRequest(requestPayload);
-			setActiveOrderRequest(createdRequest);
+			let finalRequest;
+			// Single-Card Lifecycle: If modifying an existing request (e.g. after out-of-stock change request),
+			// UPDATE the existing row so Admin POS retains the exact same card across the lifecycle.
+			if (activeOrderRequest?.id) {
+				finalRequest = await orderRequestAPI.resubmitOrderRequest(
+					activeOrderRequest.id,
+					requestPayload
+				);
+			} else {
+				// Fresh new order request (first checkout)
+				finalRequest = await orderRequestAPI.createOrderRequest(requestPayload);
+			}
+
+			setActiveOrderRequest(finalRequest);
 
 			// If order has items requiring stock verification:
 			if (hasUncertainItems) {
 				// Send Telegram alert to staff group in background
-				notifyStockCheckRequired(createdRequest).catch((err) =>
+				notifyStockCheckRequired(finalRequest).catch((err) =>
 					console.error("Telegram notification error:", err)
 				);
 
-				toast.success("Order request sent! Checking kitchen availability...", {
-					id: toastId,
-				});
+				toast.success(
+					activeOrderRequest?.id
+						? "Order request updated! Checking kitchen availability..."
+						: "Order request sent! Checking kitchen availability...",
+					{ id: toastId }
+				);
 				setStep("stock_check");
 			} else {
 				// All items in stock: proceed directly to payment
@@ -362,26 +378,7 @@ const ContactDetailsSection = () => {
 				</div>
 			</div>
 
-			{/* 4. Drop-off / Delivery Notes */}
-			<div className="card bg-base-100 shadow-sm border border-base-200 rounded-2xl">
-				<div className="card-body p-4 space-y-2">
-					<label className="text-xs font-bold uppercase tracking-wider text-base-content/70">
-						Delivery Notes (Optional)
-					</label>
-					<input
-						type="text"
-						placeholder="e.g. Leave at lobby counter, call upon arrival..."
-						className="input input-bordered input-sm w-full font-medium text-xs"
-						value={notes}
-						onChange={(e) => {
-							setNotes(e.target.value);
-							setCustomerInfo({ notes: e.target.value });
-						}}
-					/>
-				</div>
-			</div>
-
-			{/* 5. Items Summary with Stock Notice */}
+			{/* 4. Items Summary with Stock Notice */}
 			<div className="card bg-base-100 shadow-sm border border-base-200 rounded-2xl">
 				<div className="card-body p-4 space-y-3">
 					<div className="flex items-center justify-between">
