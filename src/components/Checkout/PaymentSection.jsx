@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
 	ArrowLeft,
 	Building,
@@ -29,6 +30,7 @@ const PaymentSection = () => {
 		updateActiveOrderRequest,
 		setStep,
 	} = useOrderFlowStore();
+	const navigate = useNavigate();
 
 	const { clearCart } = useCartStore();
 
@@ -140,10 +142,11 @@ const PaymentSection = () => {
 				console.error("Telegram notification error:", err)
 			);
 
-			// 4. Clear cart & transition to waiting screen
+			// 4. Clear cart & transition to waiting screen with deep-linkable status URL
 			clearCart();
 			toast.success("Order & Payment submitted successfully! 🎉", { id: toastId });
 			setStep("waiting");
+			navigate(`/order/status/${updatedRequest.id}`);
 		} catch (error) {
 			console.error("Payment submit error:", error);
 			toast.error("Failed to submit payment. Please try again.", { id: toastId });

@@ -37,7 +37,6 @@ const ContactDetailsSection = () => {
 	const [name, setName] = useState(customerInfo.name || "");
 	const [customerId, setCustomerId] = useState(customerInfo.customerId || null);
 	const [phone, setPhone] = useState(customerInfo.phone || "");
-	const [notes, setNotes] = useState(customerInfo.notes || "");
 	const [isSubmitting, setIsSubmitting] = useState(false);
 
 	// Customer autocomplete states
@@ -104,7 +103,7 @@ const ContactDetailsSection = () => {
 		toast.success(`Customer linked: ${cust.name}`, { icon: "✨" });
 	};
 
-	// Close autocomplete on outside click
+	// Close autocomplete on outside click and cleanup search timer
 	useEffect(() => {
 		const handleClickOutside = (e) => {
 			if (nameContainerRef.current && !nameContainerRef.current.contains(e.target)) {
@@ -112,7 +111,12 @@ const ContactDetailsSection = () => {
 			}
 		};
 		document.addEventListener("mousedown", handleClickOutside);
-		return () => document.removeEventListener("mousedown", handleClickOutside);
+		return () => {
+			document.removeEventListener("mousedown", handleClickOutside);
+			if (searchTimeoutRef.current) {
+				clearTimeout(searchTimeoutRef.current);
+			}
+		};
 	}, []);
 
 	// Handle Order Request Submission (Phase 1)
@@ -142,7 +146,6 @@ const ContactDetailsSection = () => {
 			const fullDeliveryAddress = formatDeliveryAddress({
 				apartment: selectedLocation.apartmentName,
 				building: selectedLocation.building,
-				dropoffNote: notes,
 			});
 
 			// Format items adhering to POS normalized schema
@@ -185,7 +188,7 @@ const ContactDetailsSection = () => {
 				itemExtraPrices: itemExtraPrices,
 				subtotal: subtotal,
 				totalAmount: totalAmount,
-				notes: notes.trim() || null,
+				notes: null,
 				hasUncertainItems: hasUncertainItems,
 			};
 

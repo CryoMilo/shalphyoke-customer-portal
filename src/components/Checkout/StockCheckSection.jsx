@@ -28,7 +28,14 @@ const StockCheckSection = () => {
 		resetOrderFlow,
 	} = useOrderFlowStore();
 
-	const [secondsLeft, setSecondsLeft] = useState(TOTAL_WAIT_SECONDS);
+	const calculateRemainingSeconds = () => {
+		if (!activeOrderRequest?.created_at) return TOTAL_WAIT_SECONDS;
+		const createdTime = new Date(activeOrderRequest.created_at).getTime();
+		const elapsedSeconds = Math.floor((Date.now() - createdTime) / 1000);
+		return Math.max(0, TOTAL_WAIT_SECONDS - elapsedSeconds);
+	};
+
+	const [secondsLeft, setSecondsLeft] = useState(calculateRemainingSeconds);
 	const [stockStatus, setStockStatus] = useState(
 		activeOrderRequest?.stock_status || "pending_check"
 	);
@@ -96,16 +103,58 @@ const StockCheckSection = () => {
 		}
 	};
 
-	// Countdown Timer (120s down to 0)
+	// Immediate sync on mount to catch up if kitchen updated status while tab was closed/reloaded
 	useEffect(() => {
-		if (secondsLeft <= 0 || stockStatus !== "pending_check") return;
+		if (!activeOrderRequest?.id) return;
+		let isMounted = true;
+
+		orderRequestAPI
+			.getOrderRequest(activeOrderRequest.id)
+			.then((fresh) => {
+				if (!isMounted || !fresh) return;
+				updateActiveOrderRequest(fresh);
+				setStockStatus(fresh.stock_status);
+				if (fresh.stock_rejection_reason) {
+					setChangeReason(fresh.stock_rejection_reason);
+				}
+
+				if (
+					fresh.stock_status === "stock_confirmed" ||
+					fresh.status === "awaiting_payment"
+				) {
+					toast.success("Kitchen confirmed all items! 🎉 Proceeding to payment...");
+					setTimeout(() => setStep("payment"), 600);
+				} else if (
+					fresh.stock_status === "rejected" ||
+					fresh.status === "cancelled"
+				) {
+					setChangeReason(fresh.stock_rejection_reason || "Order request could not be fulfilled.");
+				}
+			})
+			.catch((err) => console.error("Error fetching fresh order request on mount:", err));
+
+		return () => {
+			isMounted = false;
+		};
+	}, [activeOrderRequest?.id, updateActiveOrderRequest, setStep]);
+
+	// Countdown Timer based on creation timestamp (persists across page reloads)
+	useEffect(() => {
+		if (stockStatus !== "pending_check" || !activeOrderRequest?.created_at) return;
+
+		const createdTime = new Date(activeOrderRequest.created_at).getTime();
 
 		const timer = setInterval(() => {
-			setSecondsLeft((prev) => Math.max(0, prev - 1));
+			const elapsedSeconds = Math.floor((Date.now() - createdTime) / 1000);
+			const remaining = Math.max(0, TOTAL_WAIT_SECONDS - elapsedSeconds);
+			setSecondsLeft(remaining);
+			if (remaining <= 0) {
+				clearInterval(timer);
+			}
 		}, 1000);
 
 		return () => clearInterval(timer);
-	}, [secondsLeft, stockStatus]);
+	}, [stockStatus, activeOrderRequest?.created_at]);
 
 	// Supabase Realtime Subscription for instant lightweight ping
 	useEffect(() => {

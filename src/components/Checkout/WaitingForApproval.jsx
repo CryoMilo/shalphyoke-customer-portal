@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
 	Clock,
 	CookingPot,
@@ -27,6 +28,7 @@ const WaitingForApproval = ({ orderIdProp }) => {
 		updateActiveOrderRequest,
 		resetOrderFlow,
 	} = useOrderFlowStore();
+	const navigate = useNavigate();
 
 	const [order, setOrder] = useState(
 		currentOrder ||
@@ -55,9 +57,104 @@ const WaitingForApproval = ({ orderIdProp }) => {
 
 	const [isLoading, setIsLoading] = useState(!order && Boolean(orderIdProp));
 
-	const targetOrderId = currentOrder?.id || orderIdProp;
+	// 1. Initial mount sync to catch up if order request or order was updated while reloading/away
+	useEffect(() => {
+		let isMounted = true;
 
-	// Listen to activeOrderRequest if waiting for POS admin to convert to real order
+		const syncOrderState = async () => {
+			// Case A: orderIdProp is provided (e.g. from /order/status/:orderId)
+			if (orderIdProp) {
+				setIsLoading(true);
+				try {
+					const orderReq = await orderRequestAPI.getOrderRequest(orderIdProp);
+					if (orderReq && isMounted) {
+						updateActiveOrderRequest(orderReq);
+						if (orderReq.final_order_id) {
+							const realOrder = await orderAPI.getStatus(orderReq.final_order_id);
+							if (isMounted) {
+								setOrder(realOrder);
+								setCurrentOrder(realOrder);
+							}
+						} else {
+							setOrder({
+								order_number: orderReq.request_number,
+								pos_order_status:
+									orderReq.status === "paid_pending_approval"
+										? "pending"
+										: orderReq.status,
+								customer_name: orderReq.customer_name,
+								customer_phone: orderReq.customer_phone,
+								delivery_address: orderReq.delivery_address,
+								payment_method: orderReq.payment_type === "cod" ? "cash" : "qr",
+								payment_slip_url: orderReq.payment_slip_url,
+								order_items: orderReq.items,
+								item_notes: orderReq.item_notes,
+								item_extra_prices: orderReq.item_extra_prices,
+								subtotal: orderReq.subtotal,
+								delivery_fee: orderReq.delivery_fee,
+								total_amount: orderReq.total_amount,
+								notes: orderReq.notes,
+							});
+						}
+						setIsLoading(false);
+						return;
+					}
+				} catch {
+					// If not found in order_requests, try direct orders table below
+				}
+
+				try {
+					const realOrder = await orderAPI.getStatus(orderIdProp);
+					if (realOrder && isMounted) {
+						setOrder(realOrder);
+						setCurrentOrder(realOrder);
+					}
+				} catch (err) {
+					console.error("Error loading order from ID prop:", err);
+				} finally {
+					if (isMounted) setIsLoading(false);
+				}
+				return;
+			}
+
+			// Case B: activeOrderRequest exists in store without orderIdProp
+			if (activeOrderRequest?.id && !currentOrder) {
+				try {
+					const freshReq = await orderRequestAPI.getOrderRequest(activeOrderRequest.id);
+					if (!isMounted || !freshReq) return;
+					updateActiveOrderRequest(freshReq);
+
+					if (freshReq.final_order_id) {
+						const realOrder = await orderAPI.getStatus(freshReq.final_order_id);
+						if (isMounted) {
+							setOrder(realOrder);
+							setCurrentOrder(realOrder);
+						}
+					} else if (freshReq.status === "cancelled") {
+						if (isMounted) {
+							setOrder((prev) => ({ ...prev, pos_order_status: "cancelled" }));
+						}
+					}
+				} catch (err) {
+					console.error("Error syncing active order request on mount:", err);
+				}
+			}
+		};
+
+		syncOrderState();
+
+		return () => {
+			isMounted = false;
+		};
+	}, [
+		orderIdProp,
+		activeOrderRequest?.id,
+		currentOrder,
+		setCurrentOrder,
+		updateActiveOrderRequest,
+	]);
+
+	// 2. Listen to activeOrderRequest via Realtime if waiting for POS admin to convert to real order
 	useEffect(() => {
 		if (!activeOrderRequest?.id || currentOrder) return;
 
@@ -87,56 +184,38 @@ const WaitingForApproval = ({ orderIdProp }) => {
 		};
 	}, [activeOrderRequest?.id, currentOrder, setCurrentOrder, updateActiveOrderRequest]);
 
-	// Listen to real order if targetOrderId is set
+	// 3. Listen to real order via Realtime once converted
 	useEffect(() => {
 		let isMounted = true;
+		const activeOrderId = currentOrder?.id;
 
-		const fetchOrderDetails = async () => {
-			if (!targetOrderId) return;
-			try {
-				const data = await orderAPI.getStatus(targetOrderId);
-				if (isMounted) {
-					setOrder(data);
-					setCurrentOrder(data);
-					setIsLoading(false);
+		if (!activeOrderId) return;
+
+		const subscription = orderAPI.subscribe(activeOrderId, (updatedOrder) => {
+			if (isMounted) {
+				setOrder(updatedOrder);
+				setCurrentOrder(updatedOrder);
+
+				if (updatedOrder.pos_order_status === "preparing") {
+					toast.success("🍳 Order Approved by Admin! Kitchen is cooking.");
+				} else if (updatedOrder.pos_order_status === "ready") {
+					toast.success("🛵 Food is ready and out for delivery!");
+				} else if (updatedOrder.pos_order_status === "completed") {
+					toast.success("✅ Order complete! Thank you!");
+				} else if (
+					updatedOrder.pos_order_status === "cancelled" ||
+					updatedOrder.pos_order_status === "refunded"
+				) {
+					toast.error("⚠️ Order was disapproved or cancelled by staff.");
 				}
-			} catch (err) {
-				console.error("Fetch order error:", err);
-				if (isMounted) setIsLoading(false);
 			}
+		});
+
+		return () => {
+			isMounted = false;
+			subscription?.unsubscribe?.();
 		};
-
-		if (!currentOrder && targetOrderId) {
-			fetchOrderDetails();
-		}
-
-		if (targetOrderId) {
-			const subscription = orderAPI.subscribe(targetOrderId, (updatedOrder) => {
-				if (isMounted) {
-					setOrder(updatedOrder);
-					setCurrentOrder(updatedOrder);
-
-					if (updatedOrder.pos_order_status === "preparing") {
-						toast.success("🍳 Order Approved by Admin! Kitchen is cooking.");
-					} else if (updatedOrder.pos_order_status === "ready") {
-						toast.success("🛵 Food is ready and out for delivery!");
-					} else if (updatedOrder.pos_order_status === "completed") {
-						toast.success("✅ Order complete! Thank you!");
-					} else if (
-						updatedOrder.pos_order_status === "cancelled" ||
-						updatedOrder.pos_order_status === "refunded"
-					) {
-						toast.error("⚠️ Order was disapproved or cancelled by staff.");
-					}
-				}
-			});
-
-			return () => {
-				isMounted = false;
-				subscription?.unsubscribe?.();
-			};
-		}
-	}, [targetOrderId, currentOrder, setCurrentOrder]);
+	}, [currentOrder?.id, setCurrentOrder]);
 
 	if (isLoading) {
 		return (
@@ -159,7 +238,10 @@ const WaitingForApproval = ({ orderIdProp }) => {
 				</p>
 				<button
 					className="btn btn-primary btn-sm rounded-xl font-bold"
-					onClick={() => resetOrderFlow()}>
+					onClick={() => {
+						resetOrderFlow();
+						navigate("/");
+					}}>
 					Back to Menu
 				</button>
 			</div>
@@ -194,7 +276,10 @@ const WaitingForApproval = ({ orderIdProp }) => {
 				</div>
 				<button
 					className="btn btn-xs btn-ghost gap-1 text-base-content/60"
-					onClick={() => resetOrderFlow()}>
+					onClick={() => {
+						resetOrderFlow();
+						navigate("/");
+					}}>
 					<RotateCcw className="w-3.5 h-3.5" />
 					New Order
 				</button>

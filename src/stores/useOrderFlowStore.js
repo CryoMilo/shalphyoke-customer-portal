@@ -116,6 +116,7 @@ export const useOrderFlowStore = create(
 				selectedLocation: state.selectedLocation,
 				customerInfo: state.customerInfo,
 				activeOrderRequest: state.activeOrderRequest,
+				currentOrder: state.currentOrder,
 			}),
 		}
 	)

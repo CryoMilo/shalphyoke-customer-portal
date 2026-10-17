@@ -90,6 +90,18 @@ export const sendTelegramPhoto = async (photoUrl, captionHtml) => {
 };
 
 /**
+ * Helper to escape HTML characters so dynamic customer inputs never break Telegram parse_mode: 'HTML'
+ */
+const escapeHtml = (value) => {
+	if (value === null || value === undefined) return "";
+	return String(value)
+		.replace(/&/g, "&amp;")
+		.replace(/</g, "&lt;")
+		.replace(/>/g, "&gt;")
+		.replace(/"/g, "&quot;");
+};
+
+/**
  * Event 1: Notify Staff that kitchen stock check is urgently needed (Phase 1)
  * GenZ Chill Young Guy Persona in Burmese prioritizing items to check first
  */
@@ -102,8 +114,8 @@ export const notifyStockCheckRequired = async (orderRequest) => {
 	const itemsToCheckList = (uncertainItems.length > 0 ? uncertainItems : orderRequest.items || [])
 		.map(
 			(i) =>
-				`👉 <b>${i.quantity || 1}x ${i.name_english || i.name_burmese}</b>${
-					i.notes ? ` <i>(${i.notes})</i>` : ""
+				`👉 <b>${i.quantity || 1}x ${escapeHtml(i.name_english || i.name_burmese)}</b>${
+					i.notes ? ` <i>(${escapeHtml(i.notes)})</i>` : ""
 				}`
 		)
 		.join("\n");
@@ -112,8 +124,8 @@ export const notifyStockCheckRequired = async (orderRequest) => {
 	const allItemsSummary = (orderRequest.items || [])
 		.map(
 			(i) =>
-				`• ${i.quantity || 1}x ${i.name_english || i.name_burmese}${
-					i.notes ? ` <i>(${i.notes})</i>` : ""
+				`• ${i.quantity || 1}x ${escapeHtml(i.name_english || i.name_burmese)}${
+					i.notes ? ` <i>(${escapeHtml(i.notes)})</i>` : ""
 				}`
 		)
 		.join("\n");
@@ -126,10 +138,10 @@ ${itemsToCheckList}
 
 ━━━━━━━━━━━━━━━━━━━
 📋 <b>အော်ဒါ အသေးစိတ် (Order Details):</b>
-• <b>Request #:</b> <code>${orderRequest.request_number}</code>
-• <b>Customer:</b> ${orderRequest.customer_name}
-• <b>Phone:</b> <a href="tel:${orderRequest.customer_phone}">${orderRequest.customer_phone}</a>
-• <b>ပို့ရမယ့်နေရာ:</b> ${orderRequest.delivery_address || "Delivery"}
+• <b>Request #:</b> <code>${escapeHtml(orderRequest.request_number)}</code>
+• <b>Customer:</b> ${escapeHtml(orderRequest.customer_name)}
+• <b>Phone:</b> <a href="tel:${escapeHtml(orderRequest.customer_phone)}">${escapeHtml(orderRequest.customer_phone)}</a>
+• <b>ပို့ရမယ့်နေရာ:</b> ${escapeHtml(orderRequest.delivery_address || "Delivery")}
 • <b>စုစုပေါင်း:</b> ฿${Number(orderRequest.total_amount || 0).toFixed(2)}
 
 📦 <b>မှာထားသမျှ အကုန် (All Items):</b>
@@ -149,10 +161,10 @@ export const notifyStockCheckCancelled = async (orderRequest, reason) => {
 	const message = `
 🙅‍♂️ <b>ORDER CANCEL သွားပြီ BRO တို့ရေ!</b>
 
-Customer က stock စစ်တာစောင့်ရင်း cancel လုပ်လိုက်လို့ <code>#${orderRequest.request_number}</code> အတွက် ပစ္စည်းမစစ်တော့လဲ ရပါပြီနော်!
+Customer က stock စစ်တာစောင့်ရင်း cancel လုပ်လိုက်လို့ <code>#${escapeHtml(orderRequest.request_number)}</code> အတွက် ပစ္စည်းမစစ်တော့လဲ ရပါပြီနော်!
 
-• <b>Customer:</b> ${orderRequest.customer_name} (<a href="tel:${orderRequest.customer_phone}">${orderRequest.customer_phone}</a>)
-• <b>အကြောင်းပြချက်:</b> <i>${reason || "Customer cancelled while waiting"}</i>
+• <b>Customer:</b> ${escapeHtml(orderRequest.customer_name)} (<a href="tel:${escapeHtml(orderRequest.customer_phone)}">${escapeHtml(orderRequest.customer_phone)}</a>)
+• <b>အကြောင်းပြချက်:</b> <i>${escapeHtml(reason || "Customer cancelled while waiting")}</i>
 
 👌 <i>မီးဖိုချောင်မှာ ဆက်စစ်စရာ မလိုတော့ပါဘူး bro!</i>
 `.trim();
@@ -175,8 +187,8 @@ export const notifyPaymentSubmitted = async (orderRequest) => {
 		.map((i) => {
 			const extra = Number(i.extra_price || 0);
 			const unit = (Number(i.price || 0) + extra) * (i.quantity || 1);
-			return `• <b>${i.quantity || 1}x ${i.name_english || i.name_burmese}</b> - ฿${unit.toFixed(2)}${
-				i.notes ? `\n  ↳ <i>${i.notes}</i>` : ""
+			return `• <b>${i.quantity || 1}x ${escapeHtml(i.name_english || i.name_burmese)}</b> - ฿${unit.toFixed(2)}${
+				i.notes ? `\n  ↳ <i>${escapeHtml(i.notes)}</i>` : ""
 			}`;
 		})
 		.join("\n");
@@ -184,10 +196,10 @@ export const notifyPaymentSubmitted = async (orderRequest) => {
 	const caption = `
 🎉 <b>ငွေရှင်းပြီး အော်ဒါအသစ် ရောက်လာပြီ BRO တို့ရေ!</b> 💸
 
-• <b>Request #:</b> <code>${orderRequest.request_number}</code>
-• <b>Customer:</b> ${orderRequest.customer_name}
-• <b>Phone:</b> <a href="tel:${orderRequest.customer_phone}">${orderRequest.customer_phone}</a>
-• <b>ပို့ရမယ့်နေရာ:</b> ${orderRequest.delivery_address || "Delivery"}
+• <b>Request #:</b> <code>${escapeHtml(orderRequest.request_number)}</code>
+• <b>Customer:</b> ${escapeHtml(orderRequest.customer_name)}
+• <b>Phone:</b> <a href="tel:${escapeHtml(orderRequest.customer_phone)}">${escapeHtml(orderRequest.customer_phone)}</a>
+• <b>ပို့ရမယ့်နေရာ:</b> ${escapeHtml(orderRequest.delivery_address || "Delivery")}
 • <b>Payment:</b> ${paymentLabel}
 
 🍱 <b>မှာယူထားသော ဟင်းများ:</b>
@@ -196,7 +208,7 @@ ${itemsList}
 💰 <b>အစားအသောက်:</b> ฿${Number(orderRequest.subtotal || 0).toFixed(2)}
 🛵 <b>ပို့ဆောင်ခ:</b> ฿${Number(orderRequest.delivery_fee || 0).toFixed(2)}
 💵 <b>ကျသင့်ငွေ စုစုပေါင်း:</b> <b>฿${Number(orderRequest.total_amount || 0).toFixed(2)}</b>
-${orderRequest.notes ? `\n📝 <b>Customer Note:</b> <i>${orderRequest.notes}</i>` : ""}
+${orderRequest.notes ? `\n📝 <b>Customer Note:</b> <i>${escapeHtml(orderRequest.notes)}</i>` : ""}
 
 ⚡ <i>POS မှာ စလစ်စစ်ပြီး Approve လုပ်ကာ Kitchen Printer ထုတ်ပေးလိုက်တော့နော် bro!</i>
 `.trim();
